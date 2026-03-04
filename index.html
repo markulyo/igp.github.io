@@ -2223,140 +2223,132 @@ LAYER_IDS.forEach(id => {
  *  AUTH0 AUTHENTICATION
  *
  *  ▼▼▼ PASTE YOUR AUTH0 CREDENTIALS HERE ▼▼▼
+ *
+ *  1. Go to manage.auth0.com → Applications → Create Application
+ *  2. Choose "Single Page Application"
+ *  3. In Settings → Allowed Web Origins: add your file's URL
+ *     (for local use: just add  *  or  http://localhost)
+ *  4. Copy Domain + Client ID below
  * ═══════════════════════════════════════════════════════════════ */
-const AUTH0_DOMAIN    = 'dev-5i8k3l2x6vf6me6a.us.auth0.com';   // ← e.g. 'your-tenant.auth0.com'
-const AUTH0_CLIENT_ID = 'PXrAZZ4HsFAqkCn42cixlFF0p0IwDU1U';   // ← from Auth0 Application settings
+const AUTH0_DOMAIN    = '';  // ← e.g. 'dev-xxxx.us.auth0.com'
+const AUTH0_CLIENT_ID = '';  // ← from Auth0 Application Settings
 
-/* ── Role mapping ────────────────────────────────────────────────────────────
- * Assign roles based on email. Customize to match your NIA team.
- * Any Auth0 user gets at minimum 'Viewer' access.
- * ─────────────────────────────────────────────────────────────────────────── */
-const AUTH0_ADMIN_EMAILS   = [];             // e.g. ['director@nia.gov.ph']
-const AUTH0_ANALYST_DOMAIN = '@nia.gov.ph';  // all @nia.gov.ph → Analyst
+/* Role assignment — customize to your NIA team */
+const AUTH0_ADMIN_EMAILS   = [];            // e.g. ['admin@nia.gov.ph']
+const AUTH0_ANALYST_DOMAIN = '@nia.gov.ph'; // all @nia.gov.ph → Analyst
 
 let auth0Client = null;
 let currentUser = null;
 
 function getRoleFromEmail(email) {
-  if (AUTH0_ADMIN_EMAILS.includes(email))          return 'Admin';
-  if (email && email.endsWith(AUTH0_ANALYST_DOMAIN)) return 'Analyst';
-  return 'Viewer';
+  if (AUTH0_ADMIN_EMAILS.includes(email))           return { role:'Admin',   cls:'badge-admin'   };
+  if (email && email.endsWith(AUTH0_ANALYST_DOMAIN)) return { role:'Analyst', cls:'badge-analyst' };
+  return                                                    { role:'Viewer',  cls:'badge-viewer'  };
 }
 
-/* ── Init Auth0 client on page load ─────────────────────────────────────────── */
+/* ── Init: called once on page load ─────────────────────────────────────────── */
 async function initAuth0() {
-  const errEl = document.getElementById('loginErr');
-
   if (!AUTH0_DOMAIN || !AUTH0_CLIENT_ID) {
-    document.getElementById('loginBtn').disabled = true;
-    document.querySelector('.login-cfg-note').innerHTML =
-      '⚠ Set <code>AUTH0_DOMAIN</code> and <code>AUTH0_CLIENT_ID</code> in the script to enable sign-in.';
+    // Show config note in login panel
+    const note = document.querySelector('.login-cfg-note');
+    if (note) note.innerHTML = '⚠ Set <code>AUTH0_DOMAIN</code> and <code>AUTH0_CLIENT_ID</code> in the script.';
+    const btn = document.getElementById('loginBtn');
+    if (btn) btn.disabled = true;
     return;
   }
 
   try {
     auth0Client = await auth0.createAuth0Client({
-      domain:       AUTH0_DOMAIN,
-      clientId:     AUTH0_CLIENT_ID,
-      authorizationParams: {
-        redirect_uri: window.location.origin + window.location.pathname,
-      },
+      domain:          AUTH0_DOMAIN,
+      clientId:        AUTH0_CLIENT_ID,
+      cacheLocation:   'localstorage',
+      useRefreshTokens: true,
     });
 
-    // Handle redirect callback after login
-    if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
-      try {
-        await auth0Client.handleRedirectCallback();
-      } catch (e) {
-        errEl.textContent = 'Authentication failed: ' + e.message;
-        errEl.classList.add('show');
-      }
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
-
+    // If already authenticated (session cached), enter app immediately
     const isAuthenticated = await auth0Client.isAuthenticated();
     if (isAuthenticated) {
-      const user = await auth0Client.getUser();
-      enterApp(user);
+      enterApp(await auth0Client.getUser());
     }
   } catch(err) {
-    errEl.textContent = 'Auth0 init error: ' + err.message;
-    errEl.classList.add('show');
     console.error('[IGP] Auth0 init error:', err);
+    const errEl = document.getElementById('loginErr');
+    if (errEl) { errEl.textContent = 'Auth0 init error: ' + err.message; errEl.classList.add('show'); }
   }
 }
 
-/* ── Trigger Auth0 login ─────────────────────────────────────────────────────── */
+/* ── Login via popup (no redirect, no callback URL needed) ──────────────────── */
 async function auth0Login() {
   const errEl = document.getElementById('loginErr');
-  errEl.classList.remove('show');
+  if (errEl) errEl.classList.remove('show');
 
   if (!auth0Client) {
-    errEl.textContent = 'Auth0 is not configured. Set AUTH0_DOMAIN and AUTH0_CLIENT_ID in the script.';
-    errEl.classList.add('show');
+    if (errEl) { errEl.textContent = 'Auth0 not ready. Check AUTH0_DOMAIN and AUTH0_CLIENT_ID.'; errEl.classList.add('show'); }
     return;
   }
 
+  const btn = document.getElementById('loginBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+
   try {
-    await auth0Client.loginWithRedirect({
-      authorizationParams: {
-        redirect_uri: window.location.origin + window.location.pathname,
-      },
-    });
+    await auth0Client.loginWithPopup();
+    const user = await auth0Client.getUser();
+    if (user) enterApp(user);
   } catch(err) {
-    errEl.textContent = 'Login error: ' + err.message;
-    errEl.classList.add('show');
-    console.error('[IGP] Auth0 login error:', err);
+    const msg = err.message || '';
+    if (!msg.includes('closed') && !msg.includes('cancel')) {
+      if (errEl) { errEl.textContent = 'Login failed: ' + msg; errEl.classList.add('show'); }
+      console.error('[IGP] Auth0 login error:', err);
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#000"/>
+        <path d="M16 7L22.5 11.5V20.5L16 25L9.5 20.5V11.5L16 7Z" fill="none" stroke="#fff" stroke-width="1.8"/>
+        <path d="M9.5 11.5L16 16L22.5 11.5" stroke="#fff" stroke-width="1.8"/>
+        <line x1="16" y1="16" x2="16" y2="25" stroke="#fff" stroke-width="1.8"/>
+      </svg> Continue with Auth0`;
+    }
   }
 }
 
-/* ── Enter the app after successful auth ─────────────────────────────────────── */
+/* ── Enter the app after successful auth ────────────────────────────────────── */
 function enterApp(user) {
   currentUser = user;
-  const name   = user.name  || user.email || 'User';
-  const email  = user.email || '';
+  const email  = user.email   || '';
+  const name   = user.name    || user.nickname || email || 'User';
   const avatar = user.picture || '';
-  const role   = getRoleFromEmail(email);
+  const { role, cls } = getRoleFromEmail(email);
 
-  // Update header badge
   const ubAvatar = document.getElementById('ubAvatar');
-  if (avatar) {
-    ubAvatar.src = avatar;
-    ubAvatar.style.display = 'block';
-  } else {
-    ubAvatar.style.display = 'none';
-  }
-  document.getElementById('ubName').textContent = name;
-  document.getElementById('userBadge').classList.add('show');
+  if (ubAvatar) { ubAvatar.src = avatar; ubAvatar.style.display = avatar ? 'block' : 'none'; }
+  const ubName = document.getElementById('ubName');
+  if (ubName) ubName.textContent = name.split(' ')[0];
 
-  // Hide login screen, show map
+  const badge = document.getElementById('userBadge');
+  if (badge) badge.classList.add('show');
+
   document.getElementById('loginScreen').classList.add('hidden');
-  setTimeout(() => { if (typeof map !== 'undefined') map.resize(); }, 100);
-
+  setTimeout(() => { if (typeof map !== 'undefined') map.resize(); }, 120);
   console.log('[IGP] Signed in:', email, '| Role:', role);
 }
 
-/* ── Logout ──────────────────────────────────────────────────────────────────── */
+/* ── Logout ─────────────────────────────────────────────────────────────────── */
 async function auth0Logout() {
   currentUser = null;
-  document.getElementById('userBadge').classList.remove('show');
+  const badge = document.getElementById('userBadge');
+  if (badge) badge.classList.remove('show');
 
   if (auth0Client) {
-    await auth0Client.logout({
-      logoutParams: {
-        returnTo: window.location.origin + window.location.pathname,
-      },
-    });
-  } else {
-    document.getElementById('loginScreen').classList.remove('hidden');
+    try { await auth0Client.logout({ openUrl: false }); } catch(e) {}
   }
+  document.getElementById('loginScreen').classList.remove('hidden');
 }
 
-// Boot Auth0 on page load
 initAuth0();
+
 
 </script>
 </body>
-
 </html>
