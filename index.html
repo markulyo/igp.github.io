@@ -2259,10 +2259,13 @@ async function initAuth0() {
 
   try {
     auth0Client = await auth0.createAuth0Client({
-      domain:          AUTH0_DOMAIN,
-      clientId:        AUTH0_CLIENT_ID,
-      cacheLocation:   'localstorage',
+      domain:           AUTH0_DOMAIN,
+      clientId:         AUTH0_CLIENT_ID,
+      cacheLocation:    'localstorage',
       useRefreshTokens: true,
+      authorizationParams: {
+        redirect_uri: 'https://markulyo.github.io/igp.github.io/',
+      },
     });
 
     // If already authenticated (session cached), enter app immediately
@@ -2291,7 +2294,11 @@ async function auth0Login() {
   if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
 
   try {
-    await auth0Client.loginWithPopup();
+    await auth0Client.loginWithPopup({
+      authorizationParams: {
+        redirect_uri: 'https://markulyo.github.io/igp.github.io/',
+      },
+    });
     const user = await auth0Client.getUser();
     if (user) enterApp(user);
   } catch(err) {
