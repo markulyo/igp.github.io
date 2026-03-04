@@ -2246,10 +2246,11 @@ function getRoleFromEmail(email) {
   return                                                    { role:'Viewer',  cls:'badge-viewer'  };
 }
 
-/* ── Init: called once on page load ─────────────────────────────────────────── */
+/* ── Init: handle redirect callback OR check existing session ────────────────── */
+const AUTH0_CALLBACK = 'https://markulyo.github.io/igp.github.io/';
+
 async function initAuth0() {
   if (!AUTH0_DOMAIN || !AUTH0_CLIENT_ID) {
-    // Show config note in login panel
     const note = document.querySelector('.login-cfg-note');
     if (note) note.innerHTML = '⚠ Set <code>AUTH0_DOMAIN</code> and <code>AUTH0_CLIENT_ID</code> in the script.';
     const btn = document.getElementById('loginBtn');
@@ -2264,11 +2265,21 @@ async function initAuth0() {
       cacheLocation:    'localstorage',
       useRefreshTokens: true,
       authorizationParams: {
-        redirect_uri: 'https://markulyo.github.io/igp.github.io/',
+        redirect_uri: AUTH0_CALLBACK,
       },
     });
 
-    // If already authenticated (session cached), enter app immediately
+    // Handle the redirect callback (code= in URL) after Auth0 redirects back
+    if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
+      try {
+        await auth0Client.handleRedirectCallback();
+      } catch(e) {
+        console.error('[IGP] Redirect callback error:', e);
+      }
+      // Clean the URL so code= doesn't persist on refresh
+      window.history.replaceState({}, document.title, AUTH0_CALLBACK);
+    }
+
     const isAuthenticated = await auth0Client.isAuthenticated();
     if (isAuthenticated) {
       enterApp(await auth0Client.getUser());
@@ -2276,47 +2287,34 @@ async function initAuth0() {
   } catch(err) {
     console.error('[IGP] Auth0 init error:', err);
     const errEl = document.getElementById('loginErr');
-    if (errEl) { errEl.textContent = 'Auth0 init error: ' + err.message; errEl.classList.add('show'); }
+    if (errEl) { errEl.textContent = 'Auth0 error: ' + err.message; errEl.classList.add('show'); }
   }
 }
 
-/* ── Login via popup (no redirect, no callback URL needed) ──────────────────── */
+/* ── Login — redirect to Auth0 Universal Login page ─────────────────────────── */
 async function auth0Login() {
   const errEl = document.getElementById('loginErr');
   if (errEl) errEl.classList.remove('show');
 
   if (!auth0Client) {
-    if (errEl) { errEl.textContent = 'Auth0 not ready. Check AUTH0_DOMAIN and AUTH0_CLIENT_ID.'; errEl.classList.add('show'); }
+    if (errEl) { errEl.textContent = 'Auth0 not ready. Check credentials in script.'; errEl.classList.add('show'); }
     return;
   }
 
   const btn = document.getElementById('loginBtn');
-  if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Redirecting…'; }
 
   try {
-    await auth0Client.loginWithPopup({
+    await auth0Client.loginWithRedirect({
       authorizationParams: {
-        redirect_uri: 'https://markulyo.github.io/igp.github.io/',
+        redirect_uri: AUTH0_CALLBACK,
       },
     });
-    const user = await auth0Client.getUser();
-    if (user) enterApp(user);
+    // Page will redirect — code below won't run until user comes back
   } catch(err) {
-    const msg = err.message || '';
-    if (!msg.includes('closed') && !msg.includes('cancel')) {
-      if (errEl) { errEl.textContent = 'Login failed: ' + msg; errEl.classList.add('show'); }
-      console.error('[IGP] Auth0 login error:', err);
-    }
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = `<svg width="18" height="18" viewBox="0 0 32 32" fill="none">
-        <circle cx="16" cy="16" r="16" fill="#000"/>
-        <path d="M16 7L22.5 11.5V20.5L16 25L9.5 20.5V11.5L16 7Z" fill="none" stroke="#fff" stroke-width="1.8"/>
-        <path d="M9.5 11.5L16 16L22.5 11.5" stroke="#fff" stroke-width="1.8"/>
-        <line x1="16" y1="16" x2="16" y2="25" stroke="#fff" stroke-width="1.8"/>
-      </svg> Continue with Auth0`;
-    }
+    if (errEl) { errEl.textContent = 'Login error: ' + err.message; errEl.classList.add('show'); }
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue with Auth0'; }
+    console.error('[IGP] Auth0 login error:', err);
   }
 }
 
@@ -2348,9 +2346,12 @@ async function auth0Logout() {
   if (badge) badge.classList.remove('show');
 
   if (auth0Client) {
-    try { await auth0Client.logout({ openUrl: false }); } catch(e) {}
+    await auth0Client.logout({
+      logoutParams: { returnTo: AUTH0_CALLBACK },
+    });
+  } else {
+    document.getElementById('loginScreen').classList.remove('hidden');
   }
-  document.getElementById('loginScreen').classList.remove('hidden');
 }
 
 initAuth0();
