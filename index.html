@@ -6,10 +6,12 @@
 <title>IGP — Integrated Geospatial Platform | NIA</title>
 <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet">
 <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+<!-- Firebase config (loaded from firebase.config.js if available) -->
+<script src="firebase.config.js" onerror="console.warn('firebase.config.js not found; using inline fallback')"></script>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="./firebase.config.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <style>
   :root {
     --bg: #0b1120;
@@ -121,7 +123,7 @@
   @keyframes breathe { 0%,100%{opacity:1; box-shadow:0 0 0 0 rgba(14,165,233,0.4)} 50%{opacity:0.85; box-shadow:0 0 0 8px rgba(14,165,233,0)} }
 
   /* ── LEGEND ── */
-  .legend-panel { position: absolute; bottom: 30px; right: 12px; background: rgba(17,24,39,0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 11px; backdrop-filter: blur(8px); z-index: 10; min-width: 180px; max-width: 220px; display: none; }
+  .legend-panel { position: absolute; bottom: 30px; right: 12px; background: rgba(17,24,39,0.95); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 11px; backdrop-filter: blur(8px); z-index: 10; min-width: 180px; max-width: 240px; display: none; max-height: calc(100vh - 100px); overflow-y: auto; }
   .legend-panel h4 { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 8px; }
   .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 11px; }
   .legend-swatch { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; }
@@ -136,14 +138,28 @@
   .kml-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(14,165,233,0.03); display: none; }
   .kml-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 7px; }
   .kml-chip { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(14,165,233,0.1); border: 1px solid rgba(14,165,233,0.25); border-radius: 6px; margin-bottom: 4px; font-size: 11px; }
-  .kml-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kml-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; min-width: 0; overflow: hidden; }
   .chip-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
   .chip-del:hover { color: var(--danger); }
 
   /* ── DRAWN POLYGONS ── */
   .poly-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(34,197,94,0.03); display: none; }
   .poly-chip { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); border-radius: 6px; margin-bottom: 4px; font-size: 11px; }
-  .poly-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; }
+  .poly-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; min-width: 0; }
+
+  /* ── COORDINATE SEARCH ── */
+  .coord-search-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(139,92,246,0.03); }
+  .coord-search-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 7px; }
+  .coord-search-row { display: flex; gap: 5px; }
+  .coord-input { flex: 1; background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 11px; color: var(--text); outline: none; font-family: inherit; }
+  .coord-input:focus { border-color: #8b5cf6; }
+  .coord-input::placeholder { color: var(--muted); }
+  .coord-add-btn { background: #8b5cf6; border: none; border-radius: 6px; color: #fff; font-size: 13px; padding: 0 10px; cursor: pointer; flex-shrink: 0; }
+  .coord-add-btn:hover { background: #7c3aed; }
+  .coord-hint { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .marker-section { padding: 10px 12px; border-top: 1px solid var(--border); background: rgba(139,92,246,0.03); display: none; }
+  .marker-chip { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.25); border-radius: 6px; margin-bottom: 4px; font-size: 11px; }
+  .marker-chip .chip-name { flex: 1; color: var(--text); font-weight: 500; }
 
   /* ── MODAL ── */
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); opacity: 0; pointer-events: none; transition: opacity 0.2s; }
@@ -153,6 +169,16 @@
   .modal-header { padding: 18px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
   .modal-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
   .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; }
+  @media print {
+    .modal-overlay { position: static !important; background: none !important; backdrop-filter: none !important; display: block !important; opacity: 1 !important; pointer-events: all !important; }
+    .modal { max-height: none !important; transform: none !important; border: none !important; border-radius: 0 !important; width: 100% !important; max-width: 100% !important; box-shadow: none !important; }
+    .modal-close { display: none !important; }
+    .modal-footer { display: none !important; }
+    .modal-header { border-bottom: 1px solid #ccc !important; }
+    header, .sidebar, #map, .map-toolbar, .status-bar, #toastContainer, .draw-indicator { display: none !important; }
+    body { overflow: visible !important; height: auto !important; }
+    .main { display: block !important; overflow: visible !important; }
+  }
   .modal-close:hover { color: var(--danger); }
   .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
   .modal-body::-webkit-scrollbar { width: 4px; }
@@ -184,6 +210,40 @@
   .toast.info { border-left: 3px solid var(--accent2); }
   @keyframes slideIn { from{opacity:0;transform:translateX(14px)} to{opacity:1;transform:translateX(0)} }
 
+  /* ── FIREBASE LOGIN ── */
+  #loginScreen { position:fixed; inset:0; z-index:9000; display:flex; background:var(--bg); }
+  .login-left { flex:1; background: linear-gradient(135deg,#0b1120 0%,#0f1f35 60%,#0b2a1a 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px; gap:16px; border-right:1px solid var(--border); }
+  .login-brand { font-family:'Syne',sans-serif; font-size:56px; font-weight:800; color:var(--accent); line-height:1; }
+  .login-sub { font-size:14px; color:var(--muted); text-align:center; max-width:280px; line-height:1.6; }
+  .login-nia { font-size:11px; color:var(--muted); border-top:1px solid var(--border); padding-top:14px; margin-top:8px; text-align:center; }
+  .login-right { width:420px; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:48px; gap:18px; }
+  .login-title { font-family:'Syne',sans-serif; font-size:22px; font-weight:700; color:var(--text); }
+  .login-desc  { font-size:12px; color:var(--muted); text-align:center; line-height:1.6; }
+  .login-divider { width:100%; display:flex; align-items:center; gap:10px; }
+  .login-divider::before, .login-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+  .login-divider span { font-size:11px; color:var(--muted); white-space:nowrap; }
+  .login-email-form { width:100%; display:flex; flex-direction:column; gap:8px; }
+  .login-input { width:100%; box-sizing:border-box; background:var(--panel2); border:1px solid var(--border); border-radius:8px; padding:10px 13px; font-size:13px; color:var(--text); outline:none; font-family:inherit; }
+  .login-input:focus { border-color:var(--accent2); }
+  .login-input::placeholder { color:var(--muted); }
+  .login-btn { width:100%; padding:11px; border-radius:8px; border:none; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; transition:opacity 0.15s; }
+  .login-btn-google { background:#fff; color:#1f2937; display:flex; align-items:center; justify-content:center; gap:10px; }
+  .login-btn-google:hover { opacity:0.9; }
+  .login-btn-email  { background:var(--accent2); color:#fff; }
+  .login-btn-email:hover { opacity:0.85; }
+  .login-btn:disabled { opacity:0.5; cursor:not-allowed; }
+  .login-err { font-size:11px; color:var(--danger); text-align:center; min-height:16px; }
+  .login-toggle { font-size:11px; color:var(--accent2); cursor:pointer; text-align:center; }
+  .login-toggle:hover { text-decoration:underline; }
+  /* ── USER BADGE ── */
+  #userBadge { display:none; align-items:center; gap:8px; background:var(--panel2); border:1px solid var(--border); border-radius:20px; padding:4px 12px 4px 6px; }
+  .user-avatar { width:26px; height:26px; border-radius:50%; background:var(--accent2); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; flex-shrink:0; overflow:hidden; }
+  .user-avatar img { width:100%; height:100%; object-fit:cover; }
+  .user-name { font-size:11px; font-weight:600; color:var(--text); max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .user-role { font-size:9px; color:var(--muted); }
+  .user-signout { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:0 0 0 4px; line-height:1; }
+  .user-signout:hover { color:var(--danger); }
+
   /* Mapbox overrides */
   .mapboxgl-ctrl-logo, .mapboxgl-ctrl-attrib { display: none !important; }
   .mapboxgl-popup-content { background: var(--panel2) !important; border: 1px solid var(--border) !important; color: var(--text) !important; border-radius: 8px !important; padding: 10px 13px !important; font-family: 'DM Sans', sans-serif !important; font-size: 12px !important; }
@@ -191,375 +251,63 @@
   .mapboxgl-popup-close-button { color: var(--muted) !important; font-size: 16px !important; }
 
 
-  /* ══════════════════════════════════════════════════
-   *  AUTH0 LOGIN SCREEN
-   * ══════════════════════════════════════════════════ */
-  #loginScreen {
-    position: fixed; inset: 0; z-index: 9999;
-    background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-  }
-  #loginScreen.hidden { display: none; }
-
-  .login-wrap {
-    display: flex; width: 820px; max-width: 96vw; min-height: 460px;
-    border-radius: 18px; overflow: hidden;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.65);
-    border: 1px solid var(--border);
-  }
-
-  /* Left — branding */
-  .login-brand {
-    flex: 1; padding: 48px 40px;
-    background: linear-gradient(145deg, #0d1f35 0%, #0b1120 55%, #091a0e 100%);
-    border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; justify-content: space-between;
-    position: relative; overflow: hidden;
-  }
-  .login-brand::before {
-    content: ''; position: absolute; inset: 0; pointer-events: none;
-    background:
-      radial-gradient(ellipse at 15% 50%, rgba(34,197,94,0.09) 0%, transparent 60%),
-      radial-gradient(ellipse at 85% 15%, rgba(14,165,233,0.06) 0%, transparent 55%);
-  }
-  .lb-logo {
-    font-family: 'Syne', sans-serif; font-size: 38px; font-weight: 800;
-    color: var(--accent); letter-spacing: -1px; position: relative;
-  }
-  .lb-logo span { color: var(--text); }
-  .lb-sub  { font-size: 12px; color: var(--muted); margin-top: 5px; position: relative; letter-spacing: 0.4px; }
-  .lb-body { font-size: 13px; color: var(--text); line-height: 1.75; position: relative; }
-  .lb-body strong { color: var(--accent); }
-  .lb-foot {
-    position: relative; font-size: 10px; color: var(--muted); line-height: 1.65;
-    border-top: 1px solid var(--border); padding-top: 14px;
-  }
-  .lb-foot strong { color: var(--text); font-size: 11px; }
-
-  /* Right — form */
-  .login-panel {
-    width: 320px; background: var(--panel);
-    padding: 52px 36px; display: flex; flex-direction: column;
-    justify-content: center; gap: 20px;
-  }
-  .login-title {
-    font-family: 'Syne', sans-serif; font-size: 21px; font-weight: 700; color: var(--text);
-  }
-  .login-hint { font-size: 12px; color: var(--muted); margin-top: -10px; }
-
-  .auth0-btn {
-    display: flex; align-items: center; justify-content: center; gap: 11px;
-    width: 100%; padding: 13px 16px; border-radius: 10px; cursor: pointer;
-    background: var(--accent); border: none; color: #000;
-    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
-    letter-spacing: 0.2px; transition: background 0.15s, transform 0.1s;
-  }
-  .auth0-btn:hover  { background: #16a34a; }
-  .auth0-btn:active { transform: scale(0.98); }
-  .auth0-btn svg { flex-shrink: 0; }
-
-  .login-err {
-    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3);
-    border-radius: 8px; padding: 9px 13px; font-size: 12px; color: #f87171;
-    display: none;
-  }
-  .login-err.show { display: block; }
-
-  .login-cfg-note {
-    font-size: 10px; color: var(--muted); line-height: 1.6; text-align: center;
-  }
-  .login-cfg-note code {
-    background: var(--panel2); padding: 1px 5px; border-radius: 3px;
-    font-size: 10px; color: var(--accent2);
-  }
-
-  /* User badge in header */
-  #userBadge {
-    display: none; align-items: center; gap: 8px;
-    background: var(--panel2); border: 1px solid var(--border);
-    border-radius: 20px; padding: 4px 12px 4px 6px; font-size: 12px; color: var(--text);
-  }
-  #userBadge.show { display: flex; }
-  #ubAvatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid var(--border); }
-  #ubLogout {
-    background: none; border: none; color: var(--muted); cursor: pointer;
-    font-size: 14px; padding: 0; margin-left: 4px; line-height: 1;
-  }
-  #ubLogout:hover { color: var(--danger); }
-
-  /* ══════════════════════════════════════════════════════
-   *  LOGIN / AUTH0
-   * ══════════════════════════════════════════════════════ */
-  #loginScreen {
-    position: fixed; inset: 0; z-index: 9999;
-    background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-  }
-  #loginScreen.hidden { display: none; }
-
-  .login-wrap {
-    display: flex; width: 820px; max-width: 96vw; min-height: 460px;
-    border-radius: 18px; overflow: hidden;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.65);
-    border: 1px solid var(--border);
-  }
-
-  .login-brand {
-    flex: 1; padding: 48px 40px;
-    background: linear-gradient(145deg, #0d1f35 0%, #0b1120 60%, #071510 100%);
-    display: flex; flex-direction: column; justify-content: space-between;
-    border-right: 1px solid var(--border); position: relative; overflow: hidden;
-  }
-  .login-brand::before {
-    content: ''; position: absolute; inset: 0; pointer-events: none;
-    background: radial-gradient(ellipse at 15% 55%, rgba(34,197,94,0.09) 0%, transparent 60%),
-                radial-gradient(ellipse at 85% 15%, rgba(14,165,233,0.06) 0%, transparent 55%);
-  }
-  .login-brand-logo {
-    font-family: 'Syne', sans-serif; font-size: 38px; font-weight: 800;
-    color: var(--accent); letter-spacing: -1px; position: relative;
-  }
-  .login-brand-logo span { color: var(--text); }
-  .login-brand-sub { font-size: 12px; color: var(--muted); margin-top: 5px; position: relative; letter-spacing: 0.4px; }
-  .login-brand-tagline { font-size: 13px; color: var(--text); line-height: 1.75; position: relative; }
-  .login-brand-tagline strong { color: var(--accent); }
-  .login-brand-footer {
-    font-size: 10px; color: var(--muted); line-height: 1.7; position: relative;
-    border-top: 1px solid var(--border); padding-top: 14px;
-  }
-  .login-brand-footer strong { color: var(--text); }
-
-  .login-form-panel {
-    width: 320px; background: var(--panel);
-    padding: 52px 36px; display: flex; flex-direction: column;
-    justify-content: center; gap: 20px;
-  }
-  .login-form-title { font-family: 'Syne', sans-serif; font-size: 21px; font-weight: 700; color: var(--text); }
-  .login-form-hint  { font-size: 12px; color: var(--muted); margin-top: -10px; }
-
-  .auth0-btn {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    width: 100%; padding: 13px 16px; border-radius: 9px; cursor: pointer;
-    background: var(--accent); border: none; color: #000;
-    font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700;
-    letter-spacing: 0.2px; transition: background 0.15s, transform 0.1s;
-  }
-  .auth0-btn:hover  { background: #16a34a; }
-  .auth0-btn:active { transform: scale(0.98); }
-  .auth0-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .login-divider {
-    display: flex; align-items: center; gap: 10px;
-    font-size: 11px; color: var(--muted);
-  }
-  .login-divider::before, .login-divider::after {
-    content: ''; flex: 1; height: 1px; background: var(--border);
-  }
-
-  .auth0-secondary-btn {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-    width: 100%; padding: 11px 16px; border-radius: 9px; cursor: pointer;
-    background: transparent; border: 1px solid var(--border); color: var(--text);
-    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
-    transition: background 0.15s, border-color 0.15s;
-  }
-  .auth0-secondary-btn:hover { background: var(--panel2); border-color: var(--accent2); }
-
-  .login-error {
-    background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25);
-    border-radius: 8px; padding: 10px 13px; font-size: 12px; color: #f87171;
-    display: none; line-height: 1.5;
-  }
-  .login-error.show { display: block; }
-
-  .login-loading {
-    text-align: center; font-size: 12px; color: var(--muted);
-    display: none; animation: pulse 1.4s ease-in-out infinite;
-  }
-  .login-loading.show { display: block; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-  .login-config-note {
-    font-size: 10px; color: var(--muted); text-align: center;
-    background: var(--panel2); border: 1px solid var(--border);
-    border-radius: 7px; padding: 9px 12px; line-height: 1.7;
-  }
-  .login-config-note code {
-    background: rgba(14,165,233,0.12); color: var(--accent2);
-    padding: 1px 5px; border-radius: 3px; font-size: 10px;
-  }
-
-  /* User badge in header */
-  #userBadge {
-    display: none; align-items: center; gap: 9px;
-    padding: 4px 12px 4px 6px; background: var(--panel2);
-    border: 1px solid var(--border); border-radius: 20px;
-    font-size: 12px; color: var(--text); cursor: default;
-  }
-  #userBadge.show { display: flex; }
-  #ubAvatar {
-    width: 24px; height: 24px; border-radius: 50%;
-    object-fit: cover; border: 1px solid var(--border);
-    display: none;
-  }
-  #ubAvatar.show { display: block; }
-  #ubInitial {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: var(--accent); color: #000; font-weight: 700;
-    font-size: 11px; display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .ub-role {
-    font-size: 10px; font-weight: 700; padding: 2px 7px;
-    border-radius: 10px; margin-left: 1px;
-  }
-  .badge-admin   { background: rgba(239,68,68,0.15);  color: #f87171; }
-  .badge-analyst { background: rgba(14,165,233,0.15); color: #38bdf8; }
-  .badge-viewer  { background: rgba(34,197,94,0.15);  color: #4ade80; }
-  .ub-logout {
-    background: none; border: none; color: var(--muted);
-    cursor: pointer; font-size: 14px; padding: 0; margin-left: 2px;
-    line-height: 1; transition: color 0.15s;
-  }
-  .ub-logout:hover { color: #f87171; }
-
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════ AUTH0 LOGIN ══ -->
+
+<!-- ═══════════════════════════ FIREBASE LOGIN SCREEN ═══ -->
 <div id="loginScreen">
-  <div class="login-wrap">
-
-    <!-- Left: Branding -->
-    <div class="login-brand">
-      <div>
-        <div class="login-brand-logo">🗺 <span>IGP</span></div>
-        <div class="login-brand-sub">Integrated Geospatial Platform</div>
-      </div>
-      <div class="login-brand-tagline">
-        A spatial decision-support system for
-        <strong>irrigation suitability assessment</strong> across the Philippines.<br><br>
-        Combining technical, environmental, and governance reference layers
-        for evidence-based planning under <strong>NIA</strong>.
-      </div>
-      <div class="login-brand-footer">
-        <strong>National Irrigation Administration</strong><br>
-        Republic of the Philippines<br>
-        <span style="color:#1f3a55">IGP WebGIS · Restricted Access</span>
-      </div>
+  <div class="login-left">
+    <div class="login-brand">🗺 IGP</div>
+    <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--text);text-align:center">Integrated Geospatial Platform</div>
+    <div class="login-sub">Spatial decision-support for irrigation suitability assessment across the Philippines</div>
+    <div class="login-nia">
+      <div style="color:var(--text);font-weight:600;margin-bottom:4px">National Irrigation Administration</div>
+      <div>Republic of the Philippines</div>
     </div>
+  </div>
+  <div class="login-right">
+    <div class="login-title">Sign In to IGP</div>
+    <div class="login-desc">Access is restricted to authorized NIA personnel. Sign in with your Google account or NIA email credentials.</div>
 
-    <!-- Right: Auth0 Form -->
-    <div class="login-form-panel">
-      <div>
-        <div class="login-form-title">Welcome back</div>
-        <div class="login-form-hint">Sign in to access the platform.</div>
-      </div>
+    <button class="login-btn login-btn-google" id="googleSignInBtn" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.2l6.7-6.7C35.8 2.5 30.2 0 24 0 14.7 0 6.7 5.5 2.7 13.5l7.8 6C12.4 13.2 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17z"/><path fill="#FBBC05" d="M10.5 28.5A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.1.8-4.5l-7.8-6A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.7 10.7l7.8-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.2 1.5-5 2.4-8.4 2.4-6.2 0-11.5-4.2-13.4-9.8l-7.8 6C6.7 42.5 14.7 48 24 48z"/></svg>
+      Continue with Google
+    </button>
 
-      <div class="login-loading" id="loginLoading">⟳ &nbsp;Connecting to Firebase…</div>
-      <div class="login-error"  id="loginError"></div>
+    <div class="login-divider"><span>or sign in with email</span></div>
 
-      <button class="auth0-btn" id="loginBtn" onclick="firebaseLogin('google')">
-        🔐 &nbsp;Sign in with Firebase
-      </button>
-
-      <div class="login-divider">or</div>
-
-      <button class="auth0-secondary-btn" onclick="firebaseLogin('google')">
-        <svg width="16" height="16" viewBox="0 0 48 48">
-          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-        </svg>
-        Continue with Google
-      </button>
-
-      <div class="login-config-note" id="configNote">
-        ⚠ Set <code>FIREBASE_API_KEY</code> and <code>FIREBASE_AUTH_DOMAIN</code>
-        in <code>firebase.config.js</code> to activate sign-in.
-      </div>
+    <div class="login-email-form">
+      <input class="login-input" id="loginEmail" type="email" placeholder="Email address" autocomplete="email" />
+      <input class="login-input" id="loginPassword" type="password" placeholder="Password" autocomplete="current-password" />
+      <div id="loginErr" class="login-err"></div>
+      <button class="login-btn login-btn-email" id="emailSignInBtn" onclick="signInWithEmail()">Sign In</button>
+      <div class="login-toggle" onclick="toggleRegister()">Don't have an account? <u>Register</u></div>
     </div>
-
   </div>
 </div>
-<!-- ══════════════════════════════════════════════════════ -->
-
-<!-- ═══════════════════════ AUTH0 LOGIN SCREEN ══════════════════════════ -->
-<div id="loginScreen">
-  <div class="login-wrap">
-
-    <!-- Branding -->
-    <div class="login-brand">
-      <div>
-        <div class="lb-logo">🗺 <span>IGP</span></div>
-        <div class="lb-sub">Integrated Geospatial Platform</div>
-      </div>
-      <div class="lb-body">
-        A spatial decision-support tool for
-        <strong>irrigation suitability assessment</strong>
-        across the Philippines.<br><br>
-        Integrating technical, environmental, and governance
-        reference layers to support evidence-based planning
-        under <strong>NIA</strong>.
-      </div>
-      <div class="lb-foot">
-        <strong>National Irrigation Administration</strong><br>
-        Republic of the Philippines<br>
-        IGP WebGIS · Restricted Access
-      </div>
-    </div>
-
-    <!-- Auth panel -->
-    <div class="login-panel">
-      <div>
-        <div class="login-title">Sign In</div>
-        <div class="login-hint">Authenticate with your NIA account.</div>
-      </div>
-
-      <button class="auth0-btn" id="loginBtn" onclick="firebaseLogin('google')">
-        <svg width="18" height="18" viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="16" fill="#000"/>
-          <path d="M16 7L22.5 11.5V20.5L16 25L9.5 20.5V11.5L16 7Z" fill="none" stroke="#fff" stroke-width="1.8"/>
-          <path d="M9.5 11.5L16 16L22.5 11.5" stroke="#fff" stroke-width="1.8"/>
-          <line x1="16" y1="16" x2="16" y2="25" stroke="#fff" stroke-width="1.8"/>
-        </svg>
-        Continue with Firebase
-      </button>
-
-      <div class="login-err" id="loginErr"></div>
-
-      <div class="login-cfg-note">
-        Configure <code>FIREBASE_API_KEY</code> and<br>
-        <code>FIREBASE_AUTH_DOMAIN</code> in firebase.config.js to enable.
-      </div>
-    </div>
-
-  </div>
-</div>
-<!-- ═══════════════════════════════════════════════════════════════════════ -->
-
 
 <!-- ═══════════════════════════════════════ HEADER ═══ -->
 <header>
   <div class="logo">🗺 <span>IGP</span>
     <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px;border-left:1px solid var(--border);padding-left:10px;">Integrated Geospatial Platform · NIA Philippines</span>
   </div>
-  <div id="userBadge">
-    <div id="ubInitial"></div>
-    <img id="ubAvatar" src="" alt="">
-    <span id="ubName"></span>
-    <span class="ub-role" id="ubRole"></span>
-    <button class="ub-logout" onclick="firebaseLogout()" title="Sign out">⏻</button>
-  </div>
-  <div class="header-actions">
+<div class="header-actions">
     <button class="btn btn-ghost" onclick="clearAllLayers()">⊗ Clear All</button>
     <button class="btn btn-ghost" id="drawBtn" onclick="toggleDraw()">✏ Draw Polygon</button>
     <button class="btn btn-ghost" onclick="downloadKML()">⬇ Export KML</button>
     <button class="btn btn-blue" onclick="document.getElementById('kmlInput').click()">📂 Upload KML</button>
     <input type="file" id="kmlInput" accept=".kml" multiple style="display:none" onchange="handleKMLUpload(event)">
     <button class="btn btn-amber" onclick="openReport()">📋 Map Report</button>
+  </div>
+  <div id="userBadge">
+    <div class="user-avatar" id="userAvatar">?</div>
+    <div>
+      <div class="user-name" id="userName">—</div>
+      <div class="user-role" id="userRole">—</div>
+    </div>
+    <button class="user-signout" onclick="signOut()" title="Sign out">⏻</button>
   </div>
 </header>
 
@@ -574,7 +322,7 @@
       <div class="dim-section" id="sec-a">
         <div class="dim-header dim-a-header" onclick="toggleDim('sec-a','grp-a')">
           🌱 Dim A — Technical Suitability
-          <span class="dim-badge" id="cnt-a">0/5</span>
+          <span class="dim-badge" id="cnt-a">0/4</span>
           <em class="dim-chevron">›</em>
         </div>
         <div class="layer-group" id="grp-a" style="max-height:1000px">
@@ -607,16 +355,6 @@
               <div class="layer-api-status not-set" id="st-soil">No API configured</div>
             </div>
             <label class="toggle"><input type="checkbox" id="chk-soil" disabled onchange="toggleLayer('soil')"><span class="slider"></span></label>
-          </div>
-          <!-- A4 -->
-          <div class="layer-item" id="item-solar">
-            <div class="layer-icon" style="background:rgba(34,197,94,0.12)">☀️</div>
-            <div class="layer-info">
-              <div class="layer-name">Solar Irrigation (SPIS)</div>
-              <div class="layer-sub">Energy Potential</div>
-              <div class="layer-api-status not-set" id="st-solar">No API configured</div>
-            </div>
-            <label class="toggle"><input type="checkbox" id="chk-solar" disabled onchange="toggleLayer('solar')"><span class="slider"></span></label>
           </div>
           <!-- A5 -->
           <div class="layer-item" id="item-landcover">
@@ -676,7 +414,7 @@
       <div class="dim-section" id="sec-c">
         <div class="dim-header dim-c-header" onclick="toggleDim('sec-c','grp-c')">
           ⚖️ Dim C — Governance & De-confliction
-          <span class="dim-badge" id="cnt-c">0/6</span>
+          <span class="dim-badge" id="cnt-c">0/7</span>
           <em class="dim-chevron">›</em>
         </div>
         <div class="layer-group" id="grp-c" style="max-height:1000px">
@@ -735,7 +473,7 @@
             <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📌</div>
             <div class="layer-info">
               <div class="layer-name">PIA</div>
-              <div class="layer-sub">Priority Irrigation Area</div>
+              <div class="layer-sub">Potential Irrigable Area</div>
               <div class="layer-api-status not-set" id="st-pia">No API configured</div>
             </div>
             <label class="toggle"><input type="checkbox" id="chk-pia" disabled onchange="toggleLayer('pia')"><span class="slider"></span></label>
@@ -766,6 +504,24 @@
       <div class="kml-section-title">⬡ Drawn Polygons</div>
       <div id="polyList"></div>
       <button class="btn btn-ghost" style="width:100%;margin-top:6px;font-size:11px" onclick="downloadKML()">⬇ Export All as KML</button>
+    </div>
+
+    <!-- Coordinate Search -->
+    <div class="coord-search-section">
+      <div class="coord-search-title">📍 Add Coordinate Marker</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <input class="coord-input" id="coordLngInput" type="number" step="any" placeholder="Longitude (e.g. 121.05)" />
+        <input class="coord-input" id="coordLatInput" type="number" step="any" placeholder="Latitude (e.g. 14.65)" />
+        <button class="coord-add-btn" onclick="addCoordMarker()" style="width:100%;padding:6px 0;font-size:12px;font-weight:600;border-radius:6px">📍 Add Marker</button>
+      </div>
+      <div class="coord-hint">WGS84 decimal degrees · Philippines: Lng 116–128, Lat 4–21</div>
+    </div>
+
+    <!-- Placed Markers list -->
+    <div class="marker-section" id="markerSection">
+      <div class="kml-section-title">📍 Placed Markers</div>
+      <div id="markerList"></div>
+      <button class="btn btn-ghost" style="width:100%;margin-top:6px;font-size:11px" onclick="exportMarkersKML()">⬇ Export Markers as KML</button>
     </div>
 
     <!-- Upload Area -->
@@ -890,8 +646,8 @@ const LAYER_CONFIG = {
   groundwater: {
     // A1 — Groundwater Map (Water Source)
     // ▼▼▼  EDIT: Paste your Mapbox Tileset ID and Source Layer below  ▼▼▼
-    tilesetId:   'markulyo.ngk2cwiyb64v',    // ← A1 Groundwater Map
-    sourceLayer: '',      // ← confirmed source-layer name
+    tilesetId:   'markulyo.gia8z80xorim',    // ← A1 Groundwater Map
+    sourceLayer: 'ormin_groundwater-3vlp0e',      // ← confirmed source-layer name
     // ▲▲▲  ───────────────────────────────────────────────────────────  ▲▲▲
     color:    '#22c55e',
     type:     'fill',   // 'fill' for polygons, 'line' for linear features
@@ -916,17 +672,6 @@ const LAYER_CONFIG = {
     sourceLayer: '',    // ← PASTE: source layer name
     // ▲▲▲  ─────  ▲▲▲
     color:    '#a3e635',
-    type:     'fill',
-    opacity:  0.30,
-  },
-
-  solar: {
-    // A4 — Suitability of Solar Powered Irrigation System (Energy Potential)
-    // ▼▼▼  EDIT  ▼▼▼
-    tilesetId:   '',    // ← PASTE: A4 Solar Irrigation (SPIS) tileset ID
-    sourceLayer: '',    // ← PASTE: source layer name
-    // ▲▲▲  ─────  ▲▲▲
-    color:    '#fbbf24',
     type:     'fill',
     opacity:  0.30,
   },
@@ -1040,7 +785,7 @@ const LAYER_CONFIG = {
   },
 
   pia: {
-    // C5 — PIA (Priority Irrigation Area)
+    // C5 — PIA (Potential Irrigable Area)
     // ▼▼▼  EDIT  ▼▼▼
     tilesetId:   '',    // ← PASTE: C5 PIA tileset ID
     sourceLayer: '',    // ← PASTE: source layer name
@@ -1072,7 +817,6 @@ const LAYER_META = {
   groundwater: { name:'Groundwater Map',           sub:'Water Source',                dim:'A', icon:'💧' },
   climate:     { name:'Climate Type',              sub:'Water Availability',          dim:'A', icon:'🌤' },
   soil:        { name:'Soil Suitability',          sub:'Agro-potential / Type',       dim:'A', icon:'🌍' },
-  solar:       { name:'Solar Irrigation (SPIS)',   sub:'Energy Potential',            dim:'A', icon:'☀️' },
   landcover:   { name:'Land Cover 2015',           sub:'Current Land Status',         dim:'A', icon:'🗺' },
   flood:       { name:'Flood Susceptibility',      sub:'Rain-Induced Hazard',         dim:'B', icon:'🌊' },
   landslide:   { name:'Landslide Susceptibility',  sub:'Rain-Induced Hazard',         dim:'B', icon:'⛰' },
@@ -1082,7 +826,7 @@ const LAYER_META = {
   cadt:        { name:'CADT',                      sub:"Indigenous Peoples' Rights",  dim:'C', icon:'📜' },
   npaaad:      { name:'NPAAAD',                      sub:'Agricultural Land Protection',   dim:'C', icon:'🌾' },
   safdz:       { name:'SAFDZ',                       sub:'Strategic Agri & Fishery Dev. Zone', dim:'C', icon:'🗂' },
-  pia:         { name:'PIA',                       sub:'Priority Irrigation Area',    dim:'C', icon:'📌' },
+  pia:         { name:'PIA',                       sub:'Potential Irrigable Area',    dim:'C', icon:'📌' },
   slope:       { name:'Slope 0–8°',               sub:'Terrain Suitability',         dim:'C', icon:'📐' },
 };
 
@@ -1768,10 +1512,46 @@ function updateTempDraw() {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+ *  AREA CALCULATION (Spherical Excess — WGS84)
+ * ═══════════════════════════════════════════════════════════════ */
+function ringAreaHa(coords) {
+  // Shoelace on sphere (Girard's theorem approximation)
+  const R = 6378137; // Earth radius metres
+  const n = coords.length;
+  if (n < 4) return 0;
+  let area = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const [x1, y1] = [coords[i][0]   * Math.PI / 180, coords[i][1]   * Math.PI / 180];
+    const [x2, y2] = [coords[i+1][0] * Math.PI / 180, coords[i+1][1] * Math.PI / 180];
+    area += (x2 - x1) * (2 + Math.sin(y1) + Math.sin(y2));
+  }
+  const m2 = Math.abs(area * R * R / 2);
+  return m2 / 10000; // hectares
+}
+
+function geomAreaHa(geometry) {
+  if (!geometry) return 0;
+  if (geometry.type === 'Polygon') {
+    return ringAreaHa(geometry.coordinates[0]);
+  }
+  if (geometry.type === 'MultiPolygon') {
+    return geometry.coordinates.reduce((s, poly) => s + ringAreaHa(poly[0]), 0);
+  }
+  return 0;
+}
+
+function fmtHa(ha) {
+  if (ha >= 1000) return ha.toLocaleString('en-PH', {maximumFractionDigits:1}) + ' ha';
+  if (ha >= 1)    return ha.toFixed(2) + ' ha';
+  return (ha * 10000).toFixed(0) + ' m²';
+}
+
 function finishPoly() {
   const closed = [...drawPts, drawPts[0]];
   const name   = 'Polygon ' + polyCnt++;
-  const feat   = { type:'Feature', geometry:{ type:'Polygon', coordinates:[closed] }, properties:{ name } };
+  const ha     = geomAreaHa({ type:'Polygon', coordinates:[closed] });
+  const feat   = { type:'Feature', geometry:{ type:'Polygon', coordinates:[closed] }, properties:{ name, area_ha: ha } };
   const sid    = 'poly-' + Date.now();
 
   map.addSource(sid, { type:'geojson', data: feat });
@@ -1800,13 +1580,17 @@ function updatePolyPanel() {
   const sec = document.getElementById('polySection');
   const lst = document.getElementById('polyList');
   sec.style.display = drawPolys.length ? 'block' : 'none';
-  lst.innerHTML = drawPolys.map((p,i) =>
-    `<div class="poly-chip">
-      <span>⬡</span>
-      <span class="chip-name">${p.properties.name}</span>
+  lst.innerHTML = drawPolys.map((p,i) => {
+    const ha = p.properties.area_ha || 0;
+    return `<div class="poly-chip" style="align-items:flex-start">
+      <span style="margin-top:2px">⬡</span>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+        <span style="font-weight:500;color:var(--text)">${p.properties.name}</span>
+        <span style="font-size:10px;color:#22c55e;font-weight:700">${fmtHa(ha)}</span>
+      </div>
       <button class="chip-del" onclick="deletePoly(${i})">✕</button>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1829,7 +1613,15 @@ function processKML(file) {
   reader.onload = ev => {
     try {
       const gj    = parseKML(ev.target.result);
-      const entry = { name: file.name, features: gj.features, mapIds: [] };
+      // Compute area for each polygon feature
+      gj.features.forEach(f => {
+        if (f.geometry && (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon')) {
+          f.properties = f.properties || {};
+          f.properties.area_ha = geomAreaHa(f.geometry);
+        }
+      });
+      const totalHa = gj.features.reduce((s,f) => s + (f.properties&&f.properties.area_ha||0), 0);
+      const entry = { name: file.name, features: gj.features, mapIds: [], area_ha: totalHa };
       uploadedKMLs.push(entry);
 
       gj.features.forEach((feat, fi) => {
@@ -1908,13 +1700,17 @@ function updateKMLPanel() {
   const sec = document.getElementById('kmlSection');
   const lst = document.getElementById('kmlList');
   sec.style.display = uploadedKMLs.length ? 'block' : 'none';
-  lst.innerHTML = uploadedKMLs.map((k,i) =>
-    `<div class="kml-chip">
-      <span>📄</span>
-      <span class="chip-name" title="${k.name}">${k.name}</span>
+  lst.innerHTML = uploadedKMLs.map((k,i) => {
+    const areaLabel = k.area_ha > 0 ? `<span style="font-size:10px;color:#22c55e;font-weight:700">${fmtHa(k.area_ha)}</span>` : '';
+    return `<div class="kml-chip" style="align-items:flex-start">
+      <span style="margin-top:2px">📄</span>
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px" title="${k.name}">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--text)">${k.name}</span>
+        ${k.area_ha > 0 ? `<span style="font-size:10px;color:#22c55e;font-weight:700">${fmtHa(k.area_ha)}</span>` : ''}
+      </div>
       <button class="chip-del" onclick="removeKML(${i})">✕</button>
-    </div>`
-  ).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1936,6 +1732,127 @@ function downloadKML() {
   a.download = 'IGP_NIA_' + Date.now() + '.kml';
   a.click();
   toast('KML exported (' + polys.length + ' polygon' + (polys.length !== 1 ? 's' : '') + ')', 'ok');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ *  COORDINATE SEARCH & MARKERS
+ * ═══════════════════════════════════════════════════════════════ */
+let placedMarkers = [];   // { name, lng, lat, mapMarker }
+let markerCnt = 1;
+
+function addCoordMarker() {
+  const lngVal = document.getElementById('coordLngInput').value.trim();
+  const latVal = document.getElementById('coordLatInput').value.trim();
+  const lng = parseFloat(lngVal);
+  const lat = parseFloat(latVal);
+
+  if (isNaN(lng) || isNaN(lat)) {
+    toast('Enter valid longitude and latitude', 'warn'); return;
+  }
+  if (lng < -180 || lng > 180 || lat < -90 || lat > 90) {
+    toast('Coordinates out of valid range', 'warn'); return;
+  }
+
+  const name = 'Marker ' + markerCnt++;
+
+  // Custom purple pin element
+  const el = document.createElement('div');
+  el.style.cssText = [
+    'width:22px','height:22px','border-radius:50% 50% 50% 0',
+    'background:#8b5cf6','border:3px solid #fff',
+    'transform:rotate(-45deg)',
+    'box-shadow:0 2px 8px rgba(139,92,246,0.6)',
+    'cursor:pointer'
+  ].join(';');
+
+  const mapMarker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+    .setLngLat([lng, lat])
+    .setPopup(new mapboxgl.Popup({ offset: 25, closeButton: true })
+      .setHTML(`<div style="font-family:inherit;font-size:12px;min-width:160px">
+        <div style="font-weight:700;margin-bottom:4px">📍 ${name}</div>
+        <div style="color:#6b7280;font-size:11px">Lng: ${lng.toFixed(6)}</div>
+        <div style="color:#6b7280;font-size:11px">Lat: ${lat.toFixed(6)}</div>
+      </div>`))
+    .addTo(map);
+
+  placedMarkers.push({ name, lng, lat, mapMarker });
+  updateMarkerPanel();
+  updateMarkerReport();
+
+  // Fly to marker
+  map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 12), duration: 900 });
+
+  // Clear inputs
+  document.getElementById('coordLngInput').value = '';
+  document.getElementById('coordLatInput').value = '';
+
+  toast('"' + name + '" placed at ' + lat.toFixed(5) + ', ' + lng.toFixed(5), 'ok');
+}
+
+// Allow Enter key in inputs
+document.addEventListener('DOMContentLoaded', () => {
+  ['coordLngInput','coordLatInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') addCoordMarker(); });
+  });
+});
+
+function deleteMarker(i) {
+  const m = placedMarkers[i];
+  if (m.mapMarker) m.mapMarker.remove();
+  placedMarkers.splice(i, 1);
+  updateMarkerPanel();
+  updateMarkerReport();
+  toast('Marker removed', 'info');
+}
+
+function flyToMarker(i) {
+  const m = placedMarkers[i];
+  map.flyTo({ center: [m.lng, m.lat], zoom: Math.max(map.getZoom(), 14), duration: 800 });
+  m.mapMarker.togglePopup();
+}
+
+function updateMarkerPanel() {
+  const sec = document.getElementById('markerSection');
+  const lst = document.getElementById('markerList');
+  sec.style.display = placedMarkers.length ? 'block' : 'none';
+  lst.innerHTML = placedMarkers.map((m, i) =>
+    `<div class="marker-chip">
+      <span style="cursor:pointer" onclick="flyToMarker(${i})">📍</span>
+      <div class="chip-name" style="display:flex;flex-direction:column;gap:1px;cursor:pointer" onclick="flyToMarker(${i})">
+        <span>${m.name}</span>
+        <span style="font-size:10px;color:#8b5cf6;font-weight:600">${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}</span>
+      </div>
+      <button class="chip-del" onclick="deleteMarker(${i})">✕</button>
+    </div>`
+  ).join('');
+}
+
+function exportMarkersKML() {
+  if (!placedMarkers.length) { toast('No markers to export', 'warn'); return; }
+  const pms = placedMarkers.map(m =>
+    `  <Placemark>
+    <name>${m.name}</name>
+    <Point><coordinates>${m.lng},${m.lat},0</coordinates></Point>
+  </Placemark>`
+  ).join('\n');
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+  <name>IGP Markers — ${new Date().toLocaleDateString()}</name>
+${pms}
+</Document>
+</kml>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([kml], { type:'application/vnd.google-earth.kml+xml' }));
+  a.download = 'IGP_Markers_' + Date.now() + '.kml';
+  a.click();
+  toast('Markers exported (' + placedMarkers.length + ')', 'ok');
+}
+
+// Called after marker add/delete to refresh the report if it's open
+function updateMarkerReport() {
+  // no-op here; report is regenerated fresh each time openReport() is called
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1985,13 +1902,12 @@ function getOverlapAttributes(layerId, bbox) {
 
 /* ── Convert KML/drawn polygon to screen pixel bbox for queryRenderedFeatures */
 function featureToBbox(feat) {
-  const coords = feat.geometry.type === 'Polygon'
-    ? feat.geometry.coordinates[0]
-    : feat.geometry.type === 'MultiPolygon'
-      ? feat.geometry.coordinates.flat(2)
-      : feat.geometry.type === 'LineString'
-        ? feat.geometry.coordinates
-        : [];
+  const g = feat.geometry;
+  const coords = g.type === 'Polygon'      ? g.coordinates[0]
+               : g.type === 'MultiPolygon' ? g.coordinates.flat(2)
+               : g.type === 'LineString'   ? g.coordinates
+               : g.type === 'Point'        ? [g.coordinates]
+               : [];
   if (!coords.length) return null;
 
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -2034,18 +1950,106 @@ function buildAttrDetail(attrResult, layerMeta) {
   return `<div style="margin-top:5px">${fieldLabel}<div style="margin-top:3px">${chips}</div></div>`;
 }
 
+function getMarkerPixel(lng, lat) {
+  // Returns a tiny 4px bbox around the marker's screen pixel for queryRenderedFeatures
+  const pt = map.project([lng, lat]);
+  const r = 4;
+  const canvas = map.getCanvas();
+  return [
+    Math.max(0, pt.x - r), Math.max(0, pt.y - r),
+    Math.min(canvas.width, pt.x + r), Math.min(canvas.height, pt.y + r)
+  ];
+}
+
+function getMarkerOverlap(layerId, lng, lat) {
+  // Query a small bbox around the exact marker pixel
+  const fillLyr = 'lyr-' + layerId + '-fill';
+  const lineLyr = 'lyr-' + layerId;
+  const lyrToQuery = map.getLayer(fillLyr) ? fillLyr : map.getLayer(lineLyr) ? lineLyr : null;
+  if (!lyrToQuery) return null;
+
+  const bbox = getMarkerPixel(lng, lat);
+  const features = map.queryRenderedFeatures([[bbox[0], bbox[1]], [bbox[2], bbox[3]]], { layers: [lyrToQuery] });
+  if (!features || !features.length) return null;
+
+  const cs = LAYER_COLOR_STATE[layerId];
+  const colorField = cs && cs.field ? cs.field : null;
+
+  if (colorField) {
+    const vals = [...new Set(features.map(f => f.properties[colorField]).filter(v => v != null).map(v => String(v)))];
+    return { field: colorField, values: vals, count: features.length };
+  }
+  // Fallback: first feature's readable props
+  const firstProps = features[0].properties || {};
+  const keyEntries = Object.entries(firstProps).filter(([k]) => !/^(id|fid|gid|objectid|shape_)/i.test(k)).slice(0, 4).map(([k, v]) => k + ': ' + v);
+  return { field: null, values: keyEntries, count: features.length };
+}
+
+function buildMarkerOverlapSection(active) {
+  if (!placedMarkers.length || !active.length) return '';
+
+  const rows = placedMarkers.map(m => {
+    const layerResults = active.map(id => {
+      const res = getMarkerOverlap(id, m.lng, m.lat);
+      if (!res || !res.values.length) return null;
+      const cs = LAYER_COLOR_STATE[id];
+      const colorMap = cs && res.field && cs.valueMap[res.field] ? cs.valueMap[res.field] : {};
+      const chips = res.values.slice(0, 8).map(v => {
+        const col = colorMap[v] || '#64748b';
+        return `<span style="display:inline-flex;align-items:center;gap:3px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:1px 6px;margin:2px 2px 0 0;font-size:10px">
+          <span style="width:7px;height:7px;border-radius:2px;background:${col};flex-shrink:0;display:inline-block"></span>${v}
+        </span>`;
+      }).join('');
+      const fieldLabel = res.field
+        ? `<span style="font-size:10px;color:var(--accent2);font-weight:600">${res.field}</span>`
+        : `<span style="font-size:10px;color:var(--muted)">attributes</span>`;
+      return `<div style="margin-bottom:7px;padding:6px 8px;background:rgba(255,255,255,0.03);border-radius:6px;border:1px solid var(--border)">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:3px">
+          <span style="color:var(--text2);font-weight:600">${LAYER_META[id].name}</span>
+          &nbsp;·&nbsp;Field: ${fieldLabel}
+        </div>
+        <div>${chips}</div>
+      </div>`;
+    }).filter(Boolean).join('');
+
+    if (!layerResults) return `<div style="margin-bottom:10px;padding:8px 10px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span>📍</span>
+        <strong style="font-size:12px">${m.name}</strong>
+        <span style="font-size:10px;color:#8b5cf6">${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">No layer features detected at this location — ensure the map is zoomed to this marker.</div>
+    </div>`;
+
+    return `<div style="margin-bottom:12px;padding:8px 10px;background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:8px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">
+        <span>📍</span>
+        <strong style="font-size:12px">${m.name}</strong>
+        <span style="font-size:10px;color:#8b5cf6">${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}</span>
+      </div>
+      ${layerResults}
+    </div>`;
+  }).join('');
+
+  return `<div class="rpt-section">
+    <div class="rpt-section-title">📍 Marker Layer Overlap Detail</div>
+    ${rows}
+  </div>`;
+}
+
 function openReport() {
   const now    = new Date();
   const active = LAYER_IDS.filter(id => STATE[id].visible);
   const dimA   = active.filter(id => LAYER_META[id].dim === 'A');
   const dimB   = active.filter(id => LAYER_META[id].dim === 'B');
   const dimC   = active.filter(id => LAYER_META[id].dim === 'C');
-  const hasData = uploadedKMLs.length > 0 || drawPolys.length > 0;
+  const hasData = uploadedKMLs.length > 0 || drawPolys.length > 0 || placedMarkers.length > 0;
 
-  // Collect all site features (KML + drawn polygons)
+  // Collect all site features (KML + drawn polygons + markers as point features)
   const siteFeatures = [
     ...uploadedKMLs.flatMap(k => k.features),
-    ...drawPolys
+    ...drawPolys,
+    ...placedMarkers.map(m => ({ type:'Feature', geometry:{ type:'Point', coordinates:[m.lng, m.lat] }, properties:{ name: m.name } }))
   ];
 
   // Build bboxes for all site features
@@ -2070,10 +2074,9 @@ function openReport() {
       { id:'groundwater', cls:'val-ok', icon:'💧',  title:'Groundwater Map',           body:'Groundwater data is active for the site area.' },
       { id:'climate',   cls:'val-ok',  icon:'🌤',  title:'Climate Type',              body:'Climate classification data is active for the site area.' },
       { id:'soil',      cls:'val-ok',  icon:'🌍',  title:'Soil Suitability',          body:'Soil classification data is active for the site area.' },
-      { id:'solar',     cls:'val-ok',  icon:'☀️',  title:'Solar Irrigation (SPIS)',   body:'Solar energy potential data is active for the site area.' },
       { id:'landcover', cls:'val-ok',  icon:'🗺',  title:'Land Cover',                body:'Land cover classification is active for the site area.' },
       { id:'irrigation',cls:'val-ok',  icon:'🏗',  title:'Existing Irrigation',       body:'Existing irrigation system data is active for the site area.' },
-      { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Priority Irrigation Area',  body:'Site may fall within a designated Priority Irrigation Area.' },
+      { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Potential Irrigable Area',  body:'Site falls within a Potential Irrigable Area. Coordinate with NIA for irrigation development planning.' },
       { id:'slope',     cls:'val-ok',  icon:'📐',  title:'Slope Classification',      body:'Slope/terrain data is active for the site area.' },
     ];
 
@@ -2119,9 +2122,6 @@ function openReport() {
       </div>`;
     });
 
-    if (dimA.includes('groundwater') && dimA.includes('solar') && dimC.includes('slope')) {
-      valHtml += `<div class="val-item val-ok"><span style="font-size:15px">✅</span><div><strong>High SPIS Suitability Indicators</strong><br>Groundwater, solar energy potential, and slope criteria are favorable for Solar-Powered Irrigation System development.</div></div>`;
-    }
     if (!valHtml) {
       valHtml = `<div class="val-item val-ok"><span style="font-size:15px">✅</span><div><strong>No critical conflicts detected</strong><br>No conflicts found from active layers. Activate more layers for comprehensive validation.</div></div>`;
     }
@@ -2147,6 +2147,8 @@ function openReport() {
       <div class="report-stat-card"><div class="report-stat-num" style="color:var(--accent)">${active.length}</div><div class="report-stat-lbl">Active Layers</div></div>
       <div class="report-stat-card"><div class="report-stat-num" style="color:var(--accent2)">${uploadedKMLs.length}</div><div class="report-stat-lbl">KML Files</div></div>
       <div class="report-stat-card"><div class="report-stat-num" style="color:var(--purple,#8b5cf6)">${drawPolys.length}</div><div class="report-stat-lbl">Drawn Polygons</div></div>
+      <div class="report-stat-card"><div class="report-stat-num" style="color:#8b5cf6">${placedMarkers.length}</div><div class="report-stat-lbl">Markers</div></div>
+      <div class="report-stat-card"><div class="report-stat-num" style="color:#22c55e;font-size:${(() => { const ha = [...uploadedKMLs.flatMap(k=>k.features), ...drawPolys].reduce((s,f)=>s+(f.properties&&f.properties.area_ha||0),0); return ha>=1000?'14px':'18px'; })()}">${(() => { const ha = [...uploadedKMLs.flatMap(k=>k.features), ...drawPolys].reduce((s,f)=>s+(f.properties&&f.properties.area_ha||0),0); return fmtHa(ha); })()}</div><div class="report-stat-lbl">Total Site Area</div></div>
 
     </div>
 
@@ -2160,15 +2162,18 @@ function openReport() {
 
     <div class="rpt-section">
       <div class="rpt-section-title">📂 Site Data</div>
-      ${uploadedKMLs.map(k=>`<div style="font-size:12px;margin-bottom:3px">📄 ${k.name} <span style="color:var(--muted)">(${k.features.length} features)</span></div>`).join('')}
-      ${drawPolys.map(p=>`<div style="font-size:12px;margin-bottom:3px">⬡ ${p.properties.name}</div>`).join('')}
-      ${!hasData?'<div style="color:var(--muted);font-size:12px">No site data loaded.</div>':''}
+      ${uploadedKMLs.map(k=>`<div style="font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:8px">📄 <span>${k.name}</span><span style="color:var(--muted)">(${k.features.length} feature${k.features.length!==1?'s':''})</span>${k.area_ha>0?`<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:4px;padding:1px 7px;font-size:10px;color:#22c55e;font-weight:700">${fmtHa(k.area_ha)}</span>`:''}</div>`).join('')}
+      ${drawPolys.map(p=>`<div style="font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:8px">⬡ <span>${p.properties.name}</span>${p.properties.area_ha?`<span style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:4px;padding:1px 7px;font-size:10px;color:#22c55e;font-weight:700">${fmtHa(p.properties.area_ha)}</span>`:''}</div>`).join('')}
+      ${placedMarkers.map((m,i)=>`<div style="font-size:12px;margin-bottom:4px;display:flex;align-items:center;gap:8px">📍 <span>${m.name}</span><span style="background:rgba(139,92,246,0.12);border:1px solid rgba(139,92,246,0.3);border-radius:4px;padding:1px 7px;font-size:10px;color:#8b5cf6;font-weight:700">${m.lat.toFixed(5)}, ${m.lng.toFixed(5)}</span></div>`).join('')}
+      ${!hasData && !placedMarkers.length?'<div style="color:var(--muted);font-size:12px">No site data loaded.</div>':''}
     </div>
 
     <div class="rpt-section">
       <div class="rpt-section-title">🔍 Overlap & Conflict Validation</div>
       ${valHtml}
     </div>
+
+    ${buildMarkerOverlapSection(active)}
 
 
     <div style="font-size:11px;color:var(--muted);line-height:1.7;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:13px">
@@ -2202,6 +2207,150 @@ document.addEventListener('keydown', e => {
 });
 
 /* ═══════════════════════════════════════════════════════════════
+ *  FIREBASE AUTHENTICATION
+ * ═══════════════════════════════════════════════════════════════ */
+
+// Inline fallback config — overridden by firebase.config.js if present
+if (!window.AUTH_CONFIG) {
+  window.AUTH_CONFIG = {
+    FIREBASE_API_KEY:            "AIzaSyDjhv-uj81Am43MXwRquinlRRoxBE9NGQA",
+    FIREBASE_AUTH_DOMAIN:        "gettingstartedwithfireba-efd5b.firebaseapp.com",
+    FIREBASE_PROJECT_ID:         "gettingstartedwithfireba-efd5b",
+    FIREBASE_APP_ID:             "1:617609354798:web:5f804b34cad0c5f388c9bf",
+    FIREBASE_ROLES_CLAIM:        "roles",
+    FIREBASE_ALLOWED_LOGIN_ROLES:"",
+    FIREBASE_ADMIN_EMAILS:       "",
+    FIREBASE_ANALYST_DOMAIN:     "@nia.gov.ph"
+  };
+}
+
+const fbApp  = firebase.initializeApp({
+  apiKey:     AUTH_CONFIG.FIREBASE_API_KEY,
+  authDomain: AUTH_CONFIG.FIREBASE_AUTH_DOMAIN,
+  projectId:  AUTH_CONFIG.FIREBASE_PROJECT_ID,
+  appId:      AUTH_CONFIG.FIREBASE_APP_ID,
+});
+const fbAuth = firebase.auth(fbApp);
+
+let currentUser = null;
+let isRegisterMode = false;
+
+function getRoleFromUser(user) {
+  if (!user) return 'viewer';
+  const adminList = (AUTH_CONFIG.FIREBASE_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+  if (adminList.includes(user.email.toLowerCase())) return 'admin';
+  const analystDomain = (AUTH_CONFIG.FIREBASE_ANALYST_DOMAIN || '@nia.gov.ph').trim();
+  if (user.email.toLowerCase().endsWith(analystDomain)) return 'analyst';
+  return 'viewer';
+}
+
+function enterApp(user) {
+  currentUser = user;
+  const role = getRoleFromUser(user);
+
+  // User badge
+  const badge = document.getElementById('userBadge');
+  badge.style.display = 'flex';
+  document.getElementById('userName').textContent = user.displayName || user.email.split('@')[0];
+  document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+
+  // Avatar — photo or initials
+  const avatarEl = document.getElementById('userAvatar');
+  if (user.photoURL) {
+    avatarEl.innerHTML = `<img src="${user.photoURL}" alt="avatar">`;
+  } else {
+    const initials = (user.displayName || user.email).split(/\s+/).map(w => w[0]).join('').slice(0,2).toUpperCase();
+    avatarEl.textContent = initials;
+  }
+
+  // Hide login screen, show app
+  document.getElementById('loginScreen').style.display = 'none';
+  toast('Welcome, ' + (user.displayName || user.email.split('@')[0]) + ' (' + role + ')', 'ok');
+}
+
+function signInWithGoogle() {
+  setLoginErr('');
+  setLoginBtns(true);
+  const provider = new firebase.auth.GoogleAuthProvider();
+  fbAuth.signInWithPopup(provider)
+    .then(result => enterApp(result.user))
+    .catch(err => { setLoginErr(friendlyError(err)); setLoginBtns(false); });
+}
+
+function signInWithEmail() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+  if (!email || !pass) { setLoginErr('Please enter email and password.'); return; }
+  setLoginErr(''); setLoginBtns(true);
+
+  if (isRegisterMode) {
+    fbAuth.createUserWithEmailAndPassword(email, pass)
+      .then(result => enterApp(result.user))
+      .catch(err => { setLoginErr(friendlyError(err)); setLoginBtns(false); });
+  } else {
+    fbAuth.signInWithEmailAndPassword(email, pass)
+      .then(result => enterApp(result.user))
+      .catch(err => { setLoginErr(friendlyError(err)); setLoginBtns(false); });
+  }
+}
+
+function signOut() {
+  fbAuth.signOut().then(() => {
+    currentUser = null;
+    document.getElementById('userBadge').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('loginEmail').value = '';
+    document.getElementById('loginPassword').value = '';
+    setLoginErr('');
+    toast('Signed out', 'info');
+  });
+}
+
+function toggleRegister() {
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('emailSignInBtn').textContent = isRegisterMode ? 'Create Account' : 'Sign In';
+  document.querySelector('.login-toggle').innerHTML = isRegisterMode
+    ? 'Already have an account? <u>Sign In</u>'
+    : "Don't have an account? <u>Register</u>";
+  setLoginErr('');
+}
+
+function setLoginErr(msg) { document.getElementById('loginErr').textContent = msg; }
+function setLoginBtns(disabled) {
+  document.getElementById('googleSignInBtn').disabled = disabled;
+  document.getElementById('emailSignInBtn').disabled  = disabled;
+}
+function friendlyError(err) {
+  const map = {
+    'auth/user-not-found':      'No account found for this email.',
+    'auth/wrong-password':      'Incorrect password.',
+    'auth/email-already-in-use':'An account with this email already exists.',
+    'auth/invalid-email':       'Please enter a valid email address.',
+    'auth/weak-password':       'Password must be at least 6 characters.',
+    'auth/popup-closed-by-user':'Sign-in popup was closed. Please try again.',
+    'auth/network-request-failed':'Network error. Check your connection.',
+    'auth/too-many-requests':   'Too many attempts. Please try again later.',
+    'auth/invalid-credential':  'Invalid email or password.',
+  };
+  return map[err.code] || err.message;
+}
+
+// Allow Enter key on password field
+document.addEventListener('DOMContentLoaded', () => {
+  const pwEl = document.getElementById('loginPassword');
+  if (pwEl) pwEl.addEventListener('keydown', e => { if (e.key === 'Enter') signInWithEmail(); });
+  const emEl = document.getElementById('loginEmail');
+  if (emEl) emEl.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('loginPassword').focus(); });
+});
+
+// Persist session — if already signed in, skip login screen
+fbAuth.onAuthStateChanged(user => {
+  if (user) {
+    enterApp(user);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
  *  STARTUP — enable toggles for pre-configured layers
  * ═══════════════════════════════════════════════════════════════ */
 // If tilesetId was already set above in LAYER_CONFIG, enable the toggle right away
@@ -2215,205 +2364,7 @@ LAYER_IDS.forEach(id => {
 });
 
 
-/* ═══════════════════════════════════════════════════════════════
- *  FIREBASE AUTHENTICATION
- *
- *  Configuration is loaded from firebase.config.js
- *  Set FIREBASE_API_KEY, FIREBASE_AUTH_DOMAIN, FIREBASE_PROJECT_ID,
- *  and FIREBASE_APP_ID in that file.
- * ═══════════════════════════════════════════════════════════════ */
-const AUTH_CONFIG = window.AUTH_CONFIG || {};
-
-const FIREBASE_CONFIG = {
-  apiKey: AUTH_CONFIG.FIREBASE_API_KEY || '',
-  authDomain: AUTH_CONFIG.FIREBASE_AUTH_DOMAIN || '',
-  projectId: AUTH_CONFIG.FIREBASE_PROJECT_ID || '',
-  appId: AUTH_CONFIG.FIREBASE_APP_ID || '',
-};
-
-const FIREBASE_ADMIN_EMAILS = (AUTH_CONFIG.FIREBASE_ADMIN_EMAILS || '')
-  .split(',')
-  .map(s => s.trim().toLowerCase())
-  .filter(Boolean);
-const FIREBASE_ANALYST_DOMAIN = AUTH_CONFIG.FIREBASE_ANALYST_DOMAIN || '@nia.gov.ph';
-
-let firebaseAuth = null;
-let googleProvider = null;
-let currentUser = null;
-
-function getRoleFromEmail(email) {
-  const normalized = (email || '').toLowerCase();
-  if (FIREBASE_ADMIN_EMAILS.includes(normalized)) return { role:'Admin', cls:'badge-admin' };
-  if (normalized && normalized.endsWith(FIREBASE_ANALYST_DOMAIN)) return { role:'Analyst', cls:'badge-analyst' };
-  return { role:'Viewer', cls:'badge-viewer' };
-}
-
-function setLoginError(message) {
-  document.querySelectorAll('.login-err, .login-error').forEach(errEl => {
-    if (!message) {
-      errEl.classList.remove('show');
-      errEl.textContent = '';
-      return;
-    }
-    errEl.textContent = message;
-    errEl.classList.add('show');
-  });
-}
-
-function setLoginButtonsState(disabled, text) {
-  document.querySelectorAll('#loginBtn').forEach(btn => {
-    btn.disabled = disabled;
-    if (text) btn.textContent = text;
-    else if (!disabled) btn.textContent = 'Continue with Firebase';
-  });
-}
-
-function setLoginConfigNote(messageHtml) {
-  document.querySelectorAll('.login-cfg-note, .login-config-note').forEach(note => {
-    note.innerHTML = messageHtml;
-  });
-}
-
-function setAllLoginScreensHidden(hidden) {
-  document.querySelectorAll('#loginScreen').forEach(el => {
-    el.classList.toggle('hidden', hidden);
-  });
-}
-
-function setAllUserBadgesShown(shown) {
-  document.querySelectorAll('#userBadge').forEach(el => {
-    el.classList.toggle('show', shown);
-  });
-}
-
-function resetLoginState() {
-  setLoginError('');
-  setLoginButtonsState(false);
-}
-
-function isFirebaseConfigured() {
-  return Boolean(
-    FIREBASE_CONFIG.apiKey &&
-    FIREBASE_CONFIG.authDomain &&
-    FIREBASE_CONFIG.projectId &&
-    FIREBASE_CONFIG.appId
-  );
-}
-
-function initFirebaseAuth() {
-  if (!isFirebaseConfigured()) {
-    setLoginConfigNote('⚠ Set <code>FIREBASE_API_KEY</code> and <code>FIREBASE_AUTH_DOMAIN</code> in <code>firebase.config.js</code>.');
-    setLoginButtonsState(true);
-    return;
-  }
-
-  try {
-    firebase.initializeApp(FIREBASE_CONFIG);
-    firebaseAuth = firebase.auth();
-    googleProvider = new firebase.auth.GoogleAuthProvider();
-
-    firebaseAuth.getRedirectResult().catch(err => {
-      setLoginError('Login error: ' + err.message);
-      setLoginButtonsState(false);
-      console.error('[IGP] Firebase redirect result error:', err);
-    });
-
-    firebaseAuth.onAuthStateChanged(user => {
-      if (user) {
-        enterApp(user);
-      } else {
-        setAllUserBadgesShown(false);
-        setAllLoginScreensHidden(false);
-        resetLoginState();
-      }
-    });
-  } catch (err) {
-    console.error('[IGP] Firebase init error:', err);
-    setLoginError('Firebase error: ' + err.message);
-  }
-}
-
-async function firebaseLogin(provider) {
-  setLoginError('');
-
-  if (!firebaseAuth) {
-    setLoginError('Firebase auth not ready. Check firebase.config.js.');
-    return;
-  }
-
-  setLoginButtonsState(true, 'Connecting...');
-
-  try {
-    if (provider === 'google' || !provider) {
-      await firebaseAuth.signInWithPopup(googleProvider);
-    } else {
-      await firebaseAuth.signInWithPopup(googleProvider);
-    }
-  } catch (err) {
-    const code = err && err.code ? err.code : '';
-    if (code === 'auth/popup-blocked' || code === 'auth/cancelled-popup-request' || code === 'auth/popup-closed-by-user') {
-      try {
-        await firebaseAuth.signInWithRedirect(googleProvider);
-        return;
-      } catch (redirectErr) {
-        setLoginError('Login error: ' + redirectErr.message);
-        console.error('[IGP] Firebase redirect fallback error:', redirectErr);
-      }
-    } else {
-      setLoginError('Login error: ' + err.message);
-      console.error('[IGP] Firebase login error:', err);
-    }
-    setLoginButtonsState(false);
-  }
-}
-
-function enterApp(user) {
-  currentUser = user;
-  const email = user.email || '';
-  const name = user.displayName || user.name || user.nickname || email || 'User';
-  const avatar = user.photoURL || user.picture || '';
-  const { role, cls } = getRoleFromEmail(email);
-
-  document.querySelectorAll('#ubAvatar').forEach(el => {
-    el.src = avatar;
-    el.style.display = avatar ? 'block' : 'none';
-  });
-  document.querySelectorAll('#ubName').forEach(el => {
-    el.textContent = name.split(' ')[0];
-  });
-  document.querySelectorAll('#ubInitial').forEach(el => {
-    el.textContent = (name[0] || 'U').toUpperCase();
-  });
-  document.querySelectorAll('#ubRole').forEach(el => {
-    el.classList.remove('badge-admin', 'badge-analyst', 'badge-viewer');
-    el.classList.add(cls);
-    el.textContent = role;
-  });
-
-  setAllUserBadgesShown(true);
-  setAllLoginScreensHidden(true);
-  setTimeout(() => { if (typeof map !== 'undefined') map.resize(); }, 120);
-  console.log('[IGP] Signed in:', email, '| Role:', role);
-}
-
-async function firebaseLogout() {
-  currentUser = null;
-
-  try {
-    if (firebaseAuth) await firebaseAuth.signOut();
-  } catch (err) {
-    console.error('[IGP] Firebase logout error:', err);
-  }
-
-  setAllUserBadgesShown(false);
-  setAllLoginScreensHidden(false);
-  resetLoginState();
-}
-
-initFirebaseAuth();
-
 
 </script>
 </body>
 </html>
-
