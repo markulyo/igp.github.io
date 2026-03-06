@@ -546,7 +546,7 @@
     <div class="map-toolbar">
       <button class="tool-btn" title="Zoom In"  onclick="map.zoomIn()">+</button>
       <button class="tool-btn" title="Zoom Out" onclick="map.zoomOut()">−</button>
-      <button class="tool-btn" title="Philippines extent" onclick="flyPH()" style="font-size:13px">🇵🇭</button>
+      <button class="tool-btn" title="Philippines extent" onclick="flyPH()" style="font-size:13px">4B</button>
       <button class="tool-btn" title="Full extent" onclick="map.fitBounds([[116,4],[128,21]],{padding:30})">⊞</button>
       <button class="tool-btn" id="drawTbtn" title="Draw Polygon" onclick="if(!window._viewerRestricted)toggleDraw();else toast('Not available for Viewer role','warn')">✏</button>
       <button class="tool-btn" id="satBtn" title="Toggle Satellite" onclick="toggleBasemap()">🛰</button>
@@ -619,8 +619,8 @@ const DEFAULT_STYLE = 'mapbox://styles/mapbox/dark-v11';
 // ▲▲▲  ────────────────────────────────────────  ▲▲▲
 
 // ▼▼▼  EDIT: Default map center [longitude, latitude] and zoom  ▼▼▼
-const DEFAULT_CENTER = [122.0, 12.0];   // center of the Philippines
-const DEFAULT_ZOOM   = 5.5;             // 1 = world, 18 = building level
+const DEFAULT_CENTER = [121.17, 12.97];   // center of the Philippines
+const DEFAULT_ZOOM   = 8.5;             // 1 = world, 18 = building level
 // ▲▲▲  ────────────────────────────────────────────────────────  ▲▲▲
 
 
@@ -2447,5 +2447,6 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
+
 
 
