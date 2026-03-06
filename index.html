@@ -297,11 +297,11 @@
   </div>
 <div class="header-actions">
     <button class="btn btn-ghost" onclick="clearAllLayers()">⊗ Clear All</button>
-    <button class="btn btn-ghost" id="drawBtn" onclick="toggleDraw()">✏ Draw Polygon</button>
-    <button class="btn btn-ghost" id="exportKmlBtn" onclick="downloadKML()">⬇ Export KML</button>
-    <button class="btn btn-blue" id="uploadKmlBtn" onclick="document.getElementById('kmlInput').click()">📂 Upload KML</button>
+    <button class="btn btn-ghost" id="drawBtn" onclick="if(!window._viewerRestricted)toggleDraw();else toast('Not available for Viewer role','warn')">✏ Draw Polygon</button>
+    <button class="btn btn-ghost" id="exportKmlBtn" onclick="if(!window._viewerRestricted)downloadKML();else toast('Not available for Viewer role','warn')">⬇ Export KML</button>
+    <button class="btn btn-blue" id="uploadKmlBtn" onclick="if(!window._viewerRestricted)document.getElementById('kmlInput').click();else toast('Not available for Viewer role','warn')">📂 Upload KML</button>
     <input type="file" id="kmlInput" accept=".kml" multiple style="display:none" onchange="handleKMLUpload(event)">
-    <button class="btn btn-amber" id="reportBtn" onclick="openReport()">📋 Map Report</button>
+    <button class="btn btn-amber" id="reportBtn" onclick="if(!window._viewerRestricted)openReport();else toast('Not available for Viewer role','warn')">📋 Map Report</button>
   </div>
   <div id="userBadge">
     <div class="user-avatar" id="userAvatar">?</div>
@@ -547,7 +547,7 @@
       <button class="tool-btn" title="Zoom Out" onclick="map.zoomOut()">−</button>
       <button class="tool-btn" title="Philippines extent" onclick="flyPH()" style="font-size:13px">🇵🇭</button>
       <button class="tool-btn" title="Full extent" onclick="map.fitBounds([[116,4],[128,21]],{padding:30})">⊞</button>
-      <button class="tool-btn" id="drawTbtn" title="Draw Polygon" onclick="toggleDraw()">✏</button>
+      <button class="tool-btn" id="drawTbtn" title="Draw Polygon" onclick="if(!window._viewerRestricted)toggleDraw();else toast('Not available for Viewer role','warn')">✏</button>
       <button class="tool-btn" id="satBtn" title="Toggle Satellite" onclick="toggleBasemap()">🛰</button>
     </div>
 
@@ -2280,22 +2280,16 @@ function applyRoleRestrictions(role) {
   const isViewer = role === 'viewer';
   window._viewerRestricted = isViewer;
 
-  // IDs to fully disable
   const restrictedBtns = ['drawBtn', 'drawTbtn', 'exportKmlBtn', 'uploadKmlBtn', 'reportBtn'];
-  // IDs to completely hide
-  const hiddenSections = ['coordSearchSection', 'kmlUploadFooter'];
+  const hiddenSections  = ['coordSearchSection', 'kmlUploadFooter'];
 
   restrictedBtns.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     if (isViewer) {
       el.classList.add('viewer-disabled');
-      el.setAttribute('disabled', 'disabled');
-      el.setAttribute('title', 'Not available for Viewer role');
     } else {
       el.classList.remove('viewer-disabled');
-      el.removeAttribute('disabled');
-      el.removeAttribute('title');
     }
   });
 
