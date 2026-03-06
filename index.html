@@ -2265,7 +2265,6 @@ async function ensureUserDoc(user, provider) {
 }
 
 async function getUserRoleFromDB(user) {
-  // 1. Check users doc (set on registration / ensureUserDoc)
   try {
     const userDoc = await db.collection('users').doc(user.uid).get();
     if (userDoc.exists) {
@@ -2275,22 +2274,6 @@ async function getUserRoleFromDB(user) {
   } catch (e) {
     console.warn('[IGP] users doc role fetch failed:', e);
   }
-  // 2. Check UserRole collection (admin-managed via fm.html)
-  try {
-    const snap = await db.collection('UserRole').where('email', '==', user.email).limit(1).get();
-    if (!snap.empty) {
-      const role = snap.docs[0].data().role || 'viewer';
-      console.log('[IGP] Role from UserRole collection:', role);
-      return role;
-    }
-  } catch (e) {
-    console.warn('[IGP] UserRole fetch failed:', e);
-  }
-  // 3. Fallback: derive role from email (original logic kept as safety net)
-  const adminList = (AUTH_CONFIG.FIREBASE_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
-  if (adminList.includes(user.email.toLowerCase())) return 'admin';
-  const analystDomain = (AUTH_CONFIG.FIREBASE_ANALYST_DOMAIN || '@nia.gov.ph').trim();
-  if (user.email.toLowerCase().endsWith(analystDomain)) return 'analyst';
   return 'viewer';
 }
 
