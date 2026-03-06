@@ -11,6 +11,7 @@
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -2236,12 +2237,46 @@ const fbApp  = firebase.initializeApp({
   appId:      AUTH_CONFIG.FIREBASE_APP_ID,
 });
 const fbAuth = firebase.auth(fbApp);
+const db     = firebase.firestore(fbApp);
 
 let currentUser = null;
 let isRegisterMode = false;
 
-function getRoleFromUser(user) {
-  if (!user) return 'viewer';
+/* ── Firestore helpers (from fm.html registration logic) ────────────────── */
+
+async function ensureUserDoc(user, provider) {
+  try {
+    const ref = db.collection('users').doc(user.uid);
+    const doc = await ref.get();
+    if (!doc.exists) {
+      await ref.set({
+        email:       user.email,
+        displayName: user.displayName || user.email,
+        photoURL:    user.photoURL || '',
+        createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        role:        'viewer',
+        provider:    provider
+      });
+      console.log('✅ User profile created in Firestore for', user.email);
+    }
+  } catch (e) {
+    console.warn('[IGP] User doc save failed:', e);
+  }
+}
+
+async function getUserRoleFromDB(user) {
+  // 1. Check UserRole collection (managed via fm.html)
+  try {
+    const snap = await db.collection('UserRole').where('email', '==', user.email).limit(1).get();
+    if (!snap.empty) {
+      const role = snap.docs[0].data().role || 'viewer';
+      console.log('[IGP] Role from UserRole collection:', role);
+      return role;
+    }
+  } catch (e) {
+    console.warn('[IGP] UserRole fetch failed:', e);
+  }
+  // 2. Fallback: derive role from email (original logic kept as safety net)
   const adminList = (AUTH_CONFIG.FIREBASE_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
   if (adminList.includes(user.email.toLowerCase())) return 'admin';
   const analystDomain = (AUTH_CONFIG.FIREBASE_ANALYST_DOMAIN || '@nia.gov.ph').trim();
@@ -2249,9 +2284,9 @@ function getRoleFromUser(user) {
   return 'viewer';
 }
 
-function enterApp(user) {
+function enterApp(user, role) {
   currentUser = user;
-  const role = getRoleFromUser(user);
+  role = role || 'viewer';
 
   // User badge
   const badge = document.getElementById('userBadge');
@@ -2306,7 +2341,12 @@ function signInWithGoogle() {
   setLoginBtns(true);
   const provider = new firebase.auth.GoogleAuthProvider();
   fbAuth.signInWithPopup(provider)
-    .then(result => enterApp(result.user))
+    .then(async result => {
+      const user = result.user;
+      await ensureUserDoc(user, 'google');
+      const role = await getUserRoleFromDB(user);
+      enterApp(user, role);
+    })
     .catch(err => { setLoginErr(friendlyError(err)); setLoginBtns(false); });
 }
 
@@ -2318,11 +2358,21 @@ function signInWithEmail() {
 
   if (isRegisterMode) {
     fbAuth.createUserWithEmailAndPassword(email, pass)
-      .then(result => enterApp(result.user))
+      .then(async result => {
+        const user = result.user;
+        await ensureUserDoc(user, 'email');
+        const role = await getUserRoleFromDB(user);
+        enterApp(user, role);
+      })
       .catch(err => { setLoginErr(friendlyError(err)); setLoginBtns(false); });
   } else {
     fbAuth.signInWithEmailAndPassword(email, pass)
-      .then(result => enterApp(result.user))
+      .then(async result => {
+        const user = result.user;
+        await ensureUserDoc(user, 'email');
+        const role = await getUserRoleFromDB(user);
+        enterApp(user, role);
+      })
       .catch(err => { setLoginErr(friendlyError(err)); setLoginBtns(false); });
   }
 }
@@ -2377,9 +2427,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Persist session — if already signed in, skip login screen
-fbAuth.onAuthStateChanged(user => {
+fbAuth.onAuthStateChanged(async user => {
   if (user) {
-    enterApp(user);
+    const role = await getUserRoleFromDB(user);
+    enterApp(user, role);
   }
 });
 
