@@ -39,6 +39,8 @@
 
   /* ── BUTTONS ── */
   .btn { display: flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: none; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .viewer-disabled { opacity: 0.3 !important; cursor: not-allowed !important; pointer-events: none !important; filter: grayscale(60%) !important; }
+  .viewer-hidden { display: none !important; }
   .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
   .btn-ghost:hover { background: var(--panel2); color: var(--text); }
   .btn-ghost.active { background: var(--accent); border-color: var(--accent); color: #000; }
@@ -296,10 +298,10 @@
 <div class="header-actions">
     <button class="btn btn-ghost" onclick="clearAllLayers()">⊗ Clear All</button>
     <button class="btn btn-ghost" id="drawBtn" onclick="toggleDraw()">✏ Draw Polygon</button>
-    <button class="btn btn-ghost" onclick="downloadKML()">⬇ Export KML</button>
-    <button class="btn btn-blue" onclick="document.getElementById('kmlInput').click()">📂 Upload KML</button>
+    <button class="btn btn-ghost" id="exportKmlBtn" onclick="downloadKML()">⬇ Export KML</button>
+    <button class="btn btn-blue" id="uploadKmlBtn" onclick="document.getElementById('kmlInput').click()">📂 Upload KML</button>
     <input type="file" id="kmlInput" accept=".kml" multiple style="display:none" onchange="handleKMLUpload(event)">
-    <button class="btn btn-amber" onclick="openReport()">📋 Map Report</button>
+    <button class="btn btn-amber" id="reportBtn" onclick="openReport()">📋 Map Report</button>
   </div>
   <div id="userBadge">
     <div class="user-avatar" id="userAvatar">?</div>
@@ -507,7 +509,7 @@
     </div>
 
     <!-- Coordinate Search -->
-    <div class="coord-search-section">
+    <div class="coord-search-section" id="coordSearchSection">
       <div class="coord-search-title">📍 Add Coordinate Marker</div>
       <div style="display:flex;flex-direction:column;gap:5px">
         <input class="coord-input" id="coordLngInput" type="number" step="any" placeholder="Longitude (e.g. 121.05)" />
@@ -525,7 +527,7 @@
     </div>
 
     <!-- Upload Area -->
-    <div class="sidebar-footer">
+    <div class="sidebar-footer" id="kmlUploadFooter">
       <div class="sidebar-footer-title">Upload KML to Validate</div>
       <div class="upload-area" id="dropZone"
            onclick="document.getElementById('kmlInput').click()"
@@ -598,7 +600,7 @@
  * ╚═══════════════════════════════════════════════════════════════════╝ */
 
 // ▼▼▼  EDIT: Replace the empty string with your Mapbox token  ▼▼▼
-const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFya3VseW8iLCJhIjoiY21rdHFxb2lrMXJzNzNlcXJxb2hnZnd4dSJ9.YNDPO6aR5MC643kfGL8u_w';
+const MAPBOX_TOKEN = 'pk.eyJ1IjoibWFya3VseW8iLCJhIjoiY21obGN3bzAyMWFlZDJrb3F6dDh4b29yaCJ9.DonMQxYB1xfSOvhnr-6X8A';
 // ▲▲▲  ───────────────────────────────────────────────────────  ▲▲▲
 
 
@@ -646,8 +648,8 @@ const LAYER_CONFIG = {
   groundwater: {
     // A1 — Groundwater Map (Water Source)
     // ▼▼▼  EDIT: Paste your Mapbox Tileset ID and Source Layer below  ▼▼▼
-    tilesetId:   'markulyo.ngk2cwiyb64v',    // ← A1 Groundwater Map
-    sourceLayer: '',      // ← confirmed source-layer name
+    tilesetId:   'markulyo.gia8z80xorim',    // ← A1 Groundwater Map
+    sourceLayer: 'ormin_groundwater-3vlp0e',      // ← confirmed source-layer name
     // ▲▲▲  ───────────────────────────────────────────────────────────  ▲▲▲
     color:    '#22c55e',
     type:     'fill',   // 'fill' for polygons, 'line' for linear features
@@ -1438,6 +1440,7 @@ let polyCnt   = 1;
 let tempSrc   = false;
 
 function toggleDraw() {
+  if (window._viewerRestricted) { toast('Drawing is not available for Viewer role', 'warn'); return; }
   drawMode = !drawMode;
   const bar  = document.getElementById('drawIndicator');
   const btn  = document.getElementById('drawBtn');
@@ -1606,7 +1609,7 @@ function doDrop(e) {
   if (!files.length) { toast('Only .kml files accepted', 'warn'); return; }
   files.forEach(processKML);
 }
-function handleKMLUpload(e) { Array.from(e.target.files).forEach(processKML); e.target.value = ''; }
+function handleKMLUpload(e) { if (window._viewerRestricted) return; Array.from(e.target.files).forEach(processKML); e.target.value = ''; }
 
 function processKML(file) {
   const reader = new FileReader();
@@ -1741,6 +1744,7 @@ let placedMarkers = [];   // { name, lng, lat, mapMarker }
 let markerCnt = 1;
 
 function addCoordMarker() {
+  if (window._viewerRestricted) { toast('Adding markers is not available for Viewer role', 'warn'); return; }
   const lngVal = document.getElementById('coordLngInput').value.trim();
   const latVal = document.getElementById('coordLatInput').value.trim();
   const lng = parseFloat(lngVal);
@@ -2038,6 +2042,7 @@ function buildMarkerOverlapSection(active) {
 }
 
 function openReport() {
+  if (window._viewerRestricted) { toast('Report generation is not available for Viewer role', 'warn'); return; }
   const now    = new Date();
   const active = LAYER_IDS.filter(id => STATE[id].visible);
   const dimA   = active.filter(id => LAYER_META[id].dim === 'A');
@@ -2263,9 +2268,43 @@ function enterApp(user) {
     avatarEl.textContent = initials;
   }
 
+  // Apply role-based restrictions
+  applyRoleRestrictions(role);
+
   // Hide login screen, show app
   document.getElementById('loginScreen').style.display = 'none';
   toast('Welcome, ' + (user.displayName || user.email.split('@')[0]) + ' (' + role + ')', 'ok');
+}
+
+function applyRoleRestrictions(role) {
+  const isViewer = role === 'viewer';
+  window._viewerRestricted = isViewer;
+
+  // IDs to fully disable
+  const restrictedBtns = ['drawBtn', 'drawTbtn', 'exportKmlBtn', 'uploadKmlBtn', 'reportBtn'];
+  // IDs to completely hide
+  const hiddenSections = ['coordSearchSection', 'kmlUploadFooter'];
+
+  restrictedBtns.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (isViewer) {
+      el.classList.add('viewer-disabled');
+      el.setAttribute('disabled', 'disabled');
+      el.setAttribute('title', 'Not available for Viewer role');
+    } else {
+      el.classList.remove('viewer-disabled');
+      el.removeAttribute('disabled');
+      el.removeAttribute('title');
+    }
+  });
+
+  hiddenSections.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (isViewer) el.classList.add('viewer-hidden');
+    else el.classList.remove('viewer-hidden');
+  });
 }
 
 function signInWithGoogle() {
@@ -2368,5 +2407,3 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
-
-
