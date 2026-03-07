@@ -411,7 +411,7 @@
             <label class="toggle"><input type="checkbox" id="chk-fault" disabled onchange="toggleLayer('fault')"><span class="slider"></span></label>
           </div>
            <div class="layer-item" id="item-protected">
-            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">🌿</div>
+            <div class="layer-icon" style="background:rgba(245,158,11,0.12)">🌿</div>
             <div class="layer-info">
               <div class="layer-name">Protected Areas</div>
               <div class="layer-sub">Environmental Law (NIPAS)</div>
@@ -826,8 +826,8 @@ const LAYER_META = {
   flood:       { name:'Flood Susceptibility',      sub:'Rain-Induced Hazard',         dim:'B', icon:'🌊' },
   landslide:   { name:'Landslide Susceptibility',  sub:'Rain-Induced Hazard',         dim:'B', icon:'⛰' },
   fault:       { name:'Fault Line',                sub:'Seismic Hazard',              dim:'B', icon:'⚡' },
+  protected:   { name:'Protected Areas',           sub:'Environmental Law (NIPAS)',   dim:'B', icon:'🌿' },
   irrigation:  { name:'Existing Irrigation',       sub:'NIA / DA / DAR Projects',     dim:'C', icon:'🏗' },
-  protected:   { name:'Protected Areas',           sub:'Environmental Law (NIPAS)',   dim:'C', icon:'🌿' },
   cadt:        { name:'CADT',                      sub:"Indigenous Peoples' Rights",  dim:'C', icon:'📜' },
   npaaad:      { name:'NPAAAD',                      sub:'Agricultural Land Protection',   dim:'C', icon:'🌾' },
   safdz:       { name:'SAFDZ',                       sub:'Strategic Agri & Fishery Dev. Zone', dim:'C', icon:'🗂' },
@@ -2449,6 +2449,7 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
+
 
 
 
