@@ -325,7 +325,7 @@
       <div class="dim-section" id="sec-a">
         <div class="dim-header dim-a-header" onclick="toggleDim('sec-a','grp-a')">
           🌱 Dim A — Technical Suitability
-          <span class="dim-badge" id="cnt-a">0/4</span>
+          <span class="dim-badge" id="cnt-a">0/5</span>
           <em class="dim-chevron">›</em>
         </div>
         <div class="layer-group" id="grp-a" style="max-height:1000px">
@@ -368,6 +368,15 @@
               <div class="layer-api-status not-set" id="st-landcover">No API configured</div>
             </div>
             <label class="toggle"><input type="checkbox" id="chk-landcover" disabled onchange="toggleLayer('landcover')"><span class="slider"></span></label>
+          </div>
+           <div class="layer-item" id="item-pia">
+            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📌</div>
+            <div class="layer-info">
+              <div class="layer-name">PIA</div>
+              <div class="layer-sub">Potential Irrigable Area</div>
+              <div class="layer-api-status not-set" id="st-pia">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-pia" disabled onchange="toggleLayer('pia')"><span class="slider"></span></label>
           </div>
         </div>
       </div>
@@ -474,15 +483,7 @@
             <label class="toggle"><input type="checkbox" id="chk-safdz" disabled onchange="toggleLayer('safdz')"><span class="slider"></span></label>
           </div>
           <!-- C5 -->
-          <div class="layer-item" id="item-pia">
-            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📌</div>
-            <div class="layer-info">
-              <div class="layer-name">PIA</div>
-              <div class="layer-sub">Potential Irrigable Area</div>
-              <div class="layer-api-status not-set" id="st-pia">No API configured</div>
-            </div>
-            <label class="toggle"><input type="checkbox" id="chk-pia" disabled onchange="toggleLayer('pia')"><span class="slider"></span></label>
-          </div>
+         
           <!-- C6 -->
           <div class="layer-item" id="item-slope">
             <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📐</div>
@@ -823,6 +824,7 @@ const LAYER_META = {
   climate:     { name:'Climate Type',              sub:'Water Availability',          dim:'A', icon:'🌤' },
   soil:        { name:'Soil Suitability',          sub:'Agro-potential / Type',       dim:'A', icon:'🌍' },
   landcover:   { name:'Land Cover 2015',           sub:'Current Land Status',         dim:'A', icon:'🗺' },
+  pia:         { name:'PIA',                       sub:'Potential Irrigable Area',    dim:'A', icon:'📌' },
   flood:       { name:'Flood Susceptibility',      sub:'Rain-Induced Hazard',         dim:'B', icon:'🌊' },
   landslide:   { name:'Landslide Susceptibility',  sub:'Rain-Induced Hazard',         dim:'B', icon:'⛰' },
   fault:       { name:'Fault Line',                sub:'Seismic Hazard',              dim:'B', icon:'⚡' },
@@ -831,7 +833,7 @@ const LAYER_META = {
   cadt:        { name:'CADT',                      sub:"Indigenous Peoples' Rights",  dim:'C', icon:'📜' },
   npaaad:      { name:'NPAAAD',                      sub:'Agricultural Land Protection',   dim:'C', icon:'🌾' },
   safdz:       { name:'SAFDZ',                       sub:'Strategic Agri & Fishery Dev. Zone', dim:'C', icon:'🗂' },
-  pia:         { name:'PIA',                       sub:'Potential Irrigable Area',    dim:'C', icon:'📌' },
+  
   slope:       { name:'Slope 0–8°',               sub:'Terrain Suitability',         dim:'C', icon:'📐' },
 };
 
@@ -2449,6 +2451,7 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
+
 
 
 
