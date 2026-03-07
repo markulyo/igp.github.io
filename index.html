@@ -376,7 +376,7 @@
       <div class="dim-section" id="sec-b">
         <div class="dim-header dim-b-header" onclick="toggleDim('sec-b','grp-b')">
           ⚠️ Dim B — Environmental Safety
-          <span class="dim-badge" id="cnt-b">0/3</span>
+          <span class="dim-badge" id="cnt-b">0/4</span>
           <em class="dim-chevron">›</em>
         </div>
         <div class="layer-group" id="grp-b" style="max-height:1000px">
@@ -412,12 +412,21 @@
           </div>
         </div>
       </div>
+        <div class="layer-item" id="item-protected">
+            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">🌿</div>
+            <div class="layer-info">
+              <div class="layer-name">Protected Areas</div>
+              <div class="layer-sub">Environmental Law (NIPAS)</div>
+              <div class="layer-api-status not-set" id="st-protected">No API configured</div>
+            </div>
+            <label class="toggle"><input type="checkbox" id="chk-protected" disabled onchange="toggleLayer('protected')"><span class="slider"></span></label>
+          </div>
 
       <!-- ── DIMENSION C ── -->
       <div class="dim-section" id="sec-c">
         <div class="dim-header dim-c-header" onclick="toggleDim('sec-c','grp-c')">
           ⚖️ Dim C — Governance & De-confliction
-          <span class="dim-badge" id="cnt-c">0/7</span>
+          <span class="dim-badge" id="cnt-c">0/6</span>
           <em class="dim-chevron">›</em>
         </div>
         <div class="layer-group" id="grp-c" style="max-height:1000px">
@@ -432,15 +441,7 @@
             <label class="toggle"><input type="checkbox" id="chk-irrigation" disabled onchange="toggleLayer('irrigation')"><span class="slider"></span></label>
           </div>
           <!-- C2 -->
-          <div class="layer-item" id="item-protected">
-            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">🌿</div>
-            <div class="layer-info">
-              <div class="layer-name">Protected Areas</div>
-              <div class="layer-sub">Environmental Law (NIPAS)</div>
-              <div class="layer-api-status not-set" id="st-protected">No API configured</div>
-            </div>
-            <label class="toggle"><input type="checkbox" id="chk-protected" disabled onchange="toggleLayer('protected')"><span class="slider"></span></label>
-          </div>
+        
           <!-- C3 -->
           <div class="layer-item" id="item-cadt">
             <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📜</div>
@@ -2447,6 +2448,7 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
+
 
 
 
