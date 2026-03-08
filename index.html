@@ -2121,7 +2121,7 @@ function openReport() {
       const hasOverlap  = combinedAttr !== null;
 
       // Only show red/amber alerts if there's an actual detected overlap (or no bboxes on screen)
-      const showAlert = hasOverlap;
+       const showAlert = hasOverlap;
       if (!showAlert && (c.cls === 'val-err' || c.cls === 'val-warn')) return;
 
       valHtml += `<div class="val-item ${c.cls}">
@@ -2138,8 +2138,6 @@ function openReport() {
       valHtml = `<div class="val-item val-ok"><span style="font-size:15px">✅</span><div><strong>No critical conflicts detected</strong><br>No conflicts found from active layers. Activate more layers for comprehensive validation.</div></div>`;
     }
   }
-
-
   // Tileset config table
 
 
@@ -2454,6 +2452,7 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
+
 
 
 
