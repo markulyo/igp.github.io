@@ -372,7 +372,7 @@
            <div class="layer-item" id="item-pia">
             <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📌</div>
             <div class="layer-info">
-              <div class="layer-name">PIA</div>
+              <div class="layer-name">Potential Irrigable Area</div>
               <div class="layer-sub">Potential Irrigable Area</div>
               <div class="layer-api-status not-set" id="st-pia">No API configured</div>
             </div>
@@ -897,6 +897,51 @@ map.on('error', e => {
 /* ═══════════════════════════════════════════════════════════════
  *  BASEMAP TOGGLE
  * ═══════════════════════════════════════════════════════════════ */
+
+function restoreUserLayers() {
+  // Re-add drawn polygons
+  drawPolys.forEach(feat => {
+    const sid = feat._sid;
+    if (!sid) return;
+    if (!map.getSource(sid)) {
+      map.addSource(sid, { type:'geojson', data: feat });
+    }
+    if (!map.getLayer(sid+'-fill')) {
+      map.addLayer({ id:sid+'-fill',   type:'fill', source:sid, paint:{ 'fill-color':'#22c55e','fill-opacity':0.18 } });
+      map.addLayer({ id:sid+'-stroke', type:'line', source:sid, paint:{ 'line-color':'#22c55e','line-width':2.5 } });
+    }
+  });
+
+  // Re-add uploaded KML features
+  uploadedKMLs.forEach(entry => {
+    entry.features.forEach((feat, fi) => {
+      const sid = entry.mapIds[fi];
+      if (!sid) return;
+      if (!map.getSource(sid)) {
+        map.addSource(sid, { type:'geojson', data: feat });
+      }
+      const gt = feat.geometry.type;
+      if (gt.includes('Polygon')) {
+        if (!map.getLayer(sid+'-fill'))   map.addLayer({ id:sid+'-fill',   type:'fill', source:sid, paint:{ 'fill-color':'#f472b6','fill-opacity':0.22 } });
+        if (!map.getLayer(sid+'-stroke')) map.addLayer({ id:sid+'-stroke', type:'line', source:sid, paint:{ 'line-color':'#f472b6','line-width':2 } });
+      } else if (gt.includes('Line')) {
+        if (!map.getLayer(sid+'-line'))   map.addLayer({ id:sid+'-line',   type:'line', source:sid, paint:{ 'line-color':'#f472b6','line-width':2.5 } });
+      }
+    });
+  });
+
+  // Re-add markers (Mapbox Markers survive style changes but need re-adding to map)
+  placedMarkers.forEach(m => {
+    if (m.mapMarker) {
+      m.mapMarker.remove();
+      m.mapMarker.addTo(map);
+    }
+  });
+
+  // Re-add in-progress draw temp layer if active
+  if (drawActive && drawPts.length >= 2) updateTempDraw();
+}
+
 function toggleBasemap() {
   if (!mapReady) return;
   basemapSat = !basemapSat;
@@ -906,12 +951,13 @@ function toggleBasemap() {
     : DEFAULT_STYLE);
   // ▲▲▲  ─────────────────────────────────────────────────────  ▲▲▲
   map.once('style.load', () => {
-    // Re-add all visible layers after style switch
+    // Re-add all IGP reference layers
     LAYER_IDS.forEach(id => { if (STATE[id].visible) addMapLayer(id); });
+    // Re-add user-drawn polygons, KML uploads and markers
+    restoreUserLayers();
   });
   document.getElementById('satBtn').classList.toggle('active', basemapSat);
 }
-
 function flyPH() { map.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 1200 }); }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2158,7 +2204,7 @@ function openReport() {
       { id:'landcover', cls:'val-ok',  icon:'🗺',  title:'Land Cover',                body:'Land cover classification is active for the site area.' },
       { id:'irrigation',cls:'val-ok',  icon:'🏗',  title:'Existing Irrigation',       body:'Existing irrigation system data is active for the site area.' },
       { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Potential Irrigable Area',  body:'Site falls within a Potential Irrigable Area. Coordinate with NIA for irrigation development planning.' },
-      { id:'slope',     cls:'val-ok',  icon:'📐',  title:'Slope Classification',      body:'Slope/terrain data is active for the site area.' },
+      
     ];
      checks.forEach(c => {
       if (!active.includes(c.id)) return;
@@ -2507,7 +2553,6 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
-
 
 
 
