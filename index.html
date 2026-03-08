@@ -2211,19 +2211,19 @@ function openReport() {
     </div>`;
   } else {
     const checks = [
-      { id:'fault',     cls:'val-err',  icon:'🔴', title:'Active Fault Line',         body:'Site may be proximate to a mapped active fault. Geohazard assessment and MGB clearance are required.' },
-      { id:'flood',     cls:'val-warn', icon:'⚠',  title:'Flood Susceptibility Zone', body:'Site intersects flood-susceptible zones. DRRMP compliance and drainage design are required.' },
-      { id:'landslide', cls:'val-warn', icon:'⚠',  title:'Landslide Susceptibility',  body:'Site may overlap landslide-prone areas. Slope stability analysis and MGB assessment needed.' },
-      { id:'protected', cls:'val-err',  icon:'🔴', title:'Protected Area (NIPAS)',     body:'Site overlaps a NIPAS-protected area. Development may be restricted or prohibited under the NIPAS Act.' },
-      { id:'cadt',      cls:'val-warn', icon:'⚠',  title:'CADT Ancestral Domain',     body:'Site intersects CADT area. FPIC under IPRA (RA 8371) is required.' },
-      { id:'npaaad',    cls:'val-warn', icon:'⚠',  title:'NPAAAD Overlap',            body:'Site falls within NPAAAD zones. DAR clearance or reclassification may be required.' },
-      { id:'safdz',     cls:'val-warn', icon:'⚠',  title:'SAFDZ Overlap',             body:'Site falls within a Strategic Agriculture and Fishery Development Zone. Coordinate with DA.' },
+      { id:'fault',     cls:'val-err',  icon:'🔴', title:'Active Fault Line',         body:'Site may be proximate to a mapped active fault.' },
+      { id:'flood',     cls:'val-warn', icon:'⚠',  title:'Flood Susceptibility Zone', body:'Site intersects flood-susceptible zones. ' },
+      { id:'landslide', cls:'val-warn', icon:'⚠',  title:'Landslide Susceptibility',  body:'Site may overlap landslide-prone areas. ' },
+      { id:'protected', cls:'val-err',  icon:'🔴', title:'Protected Area (NIPAS)',     body:'Site overlaps a NIPAS-protected area. ' },
+      { id:'cadt',      cls:'val-warn', icon:'⚠',  title:'CADT Ancestral Domain',     body:'Site intersects CADT area.' },
+      { id:'npaaad',    cls:'val-warn', icon:'⚠',  title:'NPAAAD Overlap',            body:'Site falls within NPAAAD zones. ' },
+      { id:'safdz',     cls:'val-warn', icon:'⚠',  title:'SAFDZ Overlap',             body:'Site falls within a Strategic Agriculture and Fishery Development Zone.' },
       { id:'groundwater', cls:'val-ok', icon:'💧',  title:'Groundwater Map',           body:'Groundwater data is active for the site area.' },
       { id:'climate',   cls:'val-ok',  icon:'🌤',  title:'Climate Type',              body:'Climate classification data is active for the site area.' },
       { id:'soil',      cls:'val-ok',  icon:'🌍',  title:'Soil Suitability',          body:'Soil classification data is active for the site area.' },
       { id:'landcover', cls:'val-ok',  icon:'🗺',  title:'Land Cover',                body:'Land cover classification is active for the site area.' },
       { id:'irrigation',cls:'val-ok',  icon:'🏗',  title:'Existing Irrigation',       body:'Existing irrigation system data is active for the site area.' },
-      { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Potential Irrigable Area',  body:'Site falls within a Potential Irrigable Area. Coordinate with NIA for irrigation development planning.' },
+      { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Potential Irrigable Area',  body:'Site falls within a Potential Irrigable Area. ' },
       
     ];
      checks.forEach(c => {
@@ -2573,6 +2573,7 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
+
 
 
 
