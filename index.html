@@ -822,6 +822,8 @@ const LAYER_META = {
  * ───────────────────────────────────────────────────────────── */
 
 // Initialise runtime state from LAYER_CONFIG
+
+// Initialise runtime state from LAYER_CONFIG
 const STATE = {};
 Object.keys(LAYER_CONFIG).forEach(id => {
   STATE[id] = {
@@ -1941,6 +1943,7 @@ function geomIntersects(siteGeom, layerGeom) {
 }
 
 /* ── Main overlap query: uses querySourceFeatures for real geometries ─────── */
+
 function getOverlapAttributes(layerId, siteFeatures) {
   if (!siteFeatures.length) return null;
   const srcId = 'src-' + layerId;
@@ -1982,6 +1985,29 @@ function getOverlapAttributes(layerId, siteFeatures) {
 
   if (!matchCount) return null;
   return { field: detectedField, values: [...allValues], count: matchCount };
+}
+
+/* ── Build attribute detail HTML for one layer's overlap ────────────────── */
+function buildAttrDetail(attrResult, layerMeta) {
+  if (!attrResult) return '';
+  const { field, values, count } = attrResult;
+  if (!values || values.length === 0) return `<div style="font-size:10px;color:var(--muted);margin-top:3px">${count} feature(s) intersected — no readable attributes</div>`;
+
+  const cs = LAYER_COLOR_STATE[layerMeta._id];
+  const colorMap = cs && field && cs.valueMap[field] ? cs.valueMap[field] : {};
+
+  const chips = values.slice(0, 10).map(v => {
+    const col = colorMap[v] || '#64748b';
+    return `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:2px 7px;margin:2px 2px 0 0;font-size:10px">
+      <span style="width:8px;height:8px;border-radius:2px;background:${col};flex-shrink:0;display:inline-block"></span>${v}
+    </span>`;
+  }).join('');
+
+  const fieldLabel = field
+    ? `<span style="font-size:10px;color:var(--muted)">Field: <strong style="color:var(--accent2)">${field}</strong> &nbsp;·&nbsp; ${count} feature(s)</span>`
+    : `<span style="font-size:10px;color:var(--muted)">${count} feature(s)</span>`;
+
+  return `<div style="margin-top:5px">${fieldLabel}<div style="margin-top:3px">${chips}</div></div>`;
 }
 
 /* ── Build attribute detail HTML for one layer's overlap ────────────────── */
@@ -2134,8 +2160,7 @@ function openReport() {
       { id:'pia',       cls:'val-ok',  icon:'📌',  title:'Potential Irrigable Area',  body:'Site falls within a Potential Irrigable Area. Coordinate with NIA for irrigation development planning.' },
       { id:'slope',     cls:'val-ok',  icon:'📐',  title:'Slope Classification',      body:'Slope/terrain data is active for the site area.' },
     ];
-
-    checks.forEach(c => {
+     checks.forEach(c => {
       if (!active.includes(c.id)) return;
 
       // True geometry intersection test via querySourceFeatures
@@ -2150,8 +2175,8 @@ function openReport() {
       const hasOverlap  = combinedAttr !== null;
 
       // Only show red/amber alerts if there's an actual detected overlap (or no bboxes on screen)
-      const showAlert = hasOverlap;
-      if (!showAlert && (c.cls === 'val-err' || c.cls === 'val-warn')) return;
+      // Skip this layer entirely if no actual geometric intersection found
+      if (!hasOverlap) return;
 
       valHtml += `<div class="val-item ${c.cls}">
         <span style="font-size:15px">${c.icon}</span>
@@ -2482,6 +2507,7 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
+
 
 
 
