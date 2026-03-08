@@ -485,15 +485,7 @@
           <!-- C5 -->
          
           <!-- C6 -->
-          <div class="layer-item" id="item-slope">
-            <div class="layer-icon" style="background:rgba(14,165,233,0.12)">📐</div>
-            <div class="layer-info">
-              <div class="layer-name">Slope 0–8°</div>
-              <div class="layer-sub">Terrain Suitability</div>
-              <div class="layer-api-status not-set" id="st-slope">No API configured</div>
-            </div>
-            <label class="toggle"><input type="checkbox" id="chk-slope" disabled onchange="toggleLayer('slope')"><span class="slider"></span></label>
-          </div>
+         
         </div>
       </div>
 
@@ -801,17 +793,7 @@ const LAYER_CONFIG = {
     opacity:  0.28,
   },
 
-  slope: {
-    // C6 — Slope 0–8° (Terrain Suitability for irrigation)
-    // ▼▼▼  EDIT  ▼▼▼
-    tilesetId:   'markulyo.yzgmnxa8jzvi',    // ← PASTE: C6 Slope 0–8° tileset ID
-    sourceLayer: '',    // ← PASTE: source layer name
-    // ▲▲▲  ─────  ▲▲▲
-    color:    '#f97316',
-    type:     'fill',
-    opacity:  0.25,
-  },
-
+  
 }; // ← end of LAYER_CONFIG — do not remove this line
 
 
@@ -833,8 +815,6 @@ const LAYER_META = {
   cadt:        { name:'CADT',                      sub:"Indigenous Peoples' Rights",  dim:'C', icon:'📜' },
   npaaad:      { name:'NPAAAD',                      sub:'Agricultural Land Protection',   dim:'C', icon:'🌾' },
   safdz:       { name:'SAFDZ',                       sub:'Strategic Agri & Fishery Dev. Zone', dim:'C', icon:'🗂' },
-  
-  slope:       { name:'Slope 0–8°',               sub:'Terrain Suitability',         dim:'C', icon:'📐' },
 };
 
 /* ─────────────────────────────────────────────────────────────
@@ -1872,68 +1852,104 @@ function updateMarkerReport() {
  * Returns array of unique attribute value strings for the best color field,
  * or all props if no color coding is set.
  */
-function getOverlapAttributes(layerId, bbox) {
-  const fillLyr  = 'lyr-' + layerId + '-fill';
-  const lineLyr  = 'lyr-' + layerId;
+
+  function pointInRing(px, py, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    if (((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+  function sampleFeaturePoints(feat) {
+  const g = feat.geometry;
+  const canvas = map.getCanvas();
+  const W = canvas.width, H = canvas.height;
+  const pts = [];
+
+  function addPt(lng, lat) {
+    const p = map.project([lng, lat]);
+    if (p.x >= 0 && p.x <= W && p.y >= 0 && p.y <= H) pts.push([p.x, p.y]);
+  }
+
+  function samplePolygon(ring) {
+    // Always add all vertices
+    ring.forEach(c => addPt(c[0], c[1]));
+    // Also sample centroid
+    const cx = ring.reduce((s,c) => s + c[0], 0) / ring.length;
+    const cy = ring.reduce((s,c) => s + c[1], 0) / ring.length;
+    if (pointInRing(cx, cy, ring)) addPt(cx, cy);
+    // Grid sample — project bbox, test each grid point against the ring
+    let mnLng=Infinity,mnLat=Infinity,mxLng=-Infinity,mxLat=-Infinity;
+    ring.forEach(([ln,la]) => { mnLng=Math.min(mnLng,ln); mxLng=Math.max(mxLng,ln); mnLat=Math.min(mnLat,la); mxLat=Math.max(mxLat,la); });
+    const steps = 5;
+    for (let i = 0; i <= steps; i++) {
+      for (let j = 0; j <= steps; j++) {
+        const lng = mnLng + (mxLng - mnLng) * i / steps;
+        const lat = mnLat + (mxLat - mnLat) * j / steps;
+        if (pointInRing(lng, lat, ring)) addPt(lng, lat);
+      }
+    }
+  }
+
+  if (g.type === 'Polygon') {
+    samplePolygon(g.coordinates[0]);
+  } else if (g.type === 'MultiPolygon') {
+    g.coordinates.forEach(poly => samplePolygon(poly[0]));
+  } else if (g.type === 'LineString') {
+    g.coordinates.forEach(c => addPt(c[0], c[1]));
+  } else if (g.type === 'Point') {
+    addPt(g.coordinates[0], g.coordinates[1]);
+  }
+
+  return pts;
+}
+
+/* ── Query a layer at sampled points and collect attribute values ─────────── */
+function getOverlapAttributes(layerId, samplePts) {
+  const fillLyr    = 'lyr-' + layerId + '-fill';
+  const lineLyr    = 'lyr-' + layerId;
   const lyrToQuery = map.getLayer(fillLyr) ? fillLyr
                    : map.getLayer(lineLyr) ? lineLyr
                    : null;
-  if (!lyrToQuery) return null;
+  if (!lyrToQuery || !samplePts.length) return null;
 
-  const features = map.queryRenderedFeatures(
-    [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
-    { layers: [lyrToQuery] }
-  );
-  if (!features || features.length === 0) return null;
-
-  // Prefer the currently active color-coding field for this layer
   const cs = LAYER_COLOR_STATE[layerId];
   const colorField = cs && cs.field ? cs.field : null;
 
-  if (colorField) {
-    // Collect unique values for the color field
-    const vals = [...new Set(
-      features.map(f => f.properties[colorField])
-              .filter(v => v !== null && v !== undefined)
-              .map(v => String(v))
-    )];
-    return { field: colorField, values: vals, count: features.length };
-  }
+  const allValues = new Set();
+  let totalCount = 0;
+  let detectedField = colorField;
 
-  // Fallback: collect all unique property combos (first feature's keys)
-  const firstProps = features[0].properties || {};
-  const keyEntries = Object.entries(firstProps)
-    .filter(([k]) => !/^(id|fid|gid|objectid|shape_)/i.test(k))
-    .slice(0, 4)
-    .map(([k, v]) => `${k}: ${v}`);
-  return { field: null, values: keyEntries, count: features.length };
-}
+  samplePts.forEach(([px, py]) => {
+    const r = 2; // tiny 4px query window per point
+    const feats = map.queryRenderedFeatures(
+      [[px - r, py - r], [px + r, py + r]],
+      { layers: [lyrToQuery] }
+    );
+    if (!feats || !feats.length) return;
+    totalCount += feats.length;
 
-/* ── Convert KML/drawn polygon to screen pixel bbox for queryRenderedFeatures */
-function featureToBbox(feat) {
-  const g = feat.geometry;
-  const coords = g.type === 'Polygon'      ? g.coordinates[0]
-               : g.type === 'MultiPolygon' ? g.coordinates.flat(2)
-               : g.type === 'LineString'   ? g.coordinates
-               : g.type === 'Point'        ? [g.coordinates]
-               : [];
-  if (!coords.length) return null;
-
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  coords.forEach(([lng, lat]) => {
-    const pt = map.project([lng, lat]);
-    if (pt.x < minX) minX = pt.x;
-    if (pt.y < minY) minY = pt.y;
-    if (pt.x > maxX) maxX = pt.x;
-    if (pt.y > maxY) maxY = pt.y;
+    if (colorField) {
+      feats.forEach(f => {
+        const v = f.properties[colorField];
+        if (v != null) allValues.add(String(v));
+      });
+    } else {
+      // Fallback: readable props from first feature
+      const firstProps = feats[0].properties || {};
+      Object.entries(firstProps)
+        .filter(([k]) => !/^(id|fid|gid|objectid|shape_)/i.test(k))
+        .slice(0, 4)
+        .forEach(([k, v]) => { allValues.add(k + ': ' + v); detectedField = null; });
+    }
   });
-  // Clamp to canvas bounds
-  const canvas = map.getCanvas();
-  minX = Math.max(0, minX); minY = Math.max(0, minY);
-  maxX = Math.min(canvas.width,  maxX);
-  maxY = Math.min(canvas.height, maxY);
-  if (maxX <= minX || maxY <= minY) return null;
-  return [minX, minY, maxX, maxY];
+
+  if (!totalCount) return null;
+  return { field: detectedField, values: [...allValues], count: totalCount };
 }
 
 /* ── Build attribute detail HTML for one layer's overlap ────────────────── */
@@ -2045,7 +2061,7 @@ function buildMarkerOverlapSection(active) {
     ${rows}
   </div>`;
 }
-
+  
 function openReport() {
   if (window._viewerRestricted) { toast('Report generation is not available for Viewer role', 'warn'); return; }
   const now    = new Date();
@@ -2062,8 +2078,8 @@ function openReport() {
     ...placedMarkers.map(m => ({ type:'Feature', geometry:{ type:'Point', coordinates:[m.lng, m.lat] }, properties:{ name: m.name } }))
   ];
 
-  // Build bboxes for all site features
-  const siteBboxes = siteFeatures.map(featureToBbox).filter(Boolean);
+  // Sample interior points of each site feature for accurate intersection testing
+  const allSamplePts = siteFeatures.flatMap(f => sampleFeaturePoints(f));
 
   // Validation logic with attribute detail
   let valHtml = '';
@@ -2093,24 +2109,10 @@ function openReport() {
     checks.forEach(c => {
       if (!active.includes(c.id)) return;
 
-      // Query attribute overlap for each site bbox
+      // Query using sampled interior points — accurate intersection, not bbox
       let combinedAttr = null;
-      if (siteBboxes.length > 0) {
-        // Merge results from all site feature bboxes
-        let totalCount = 0;
-        const allValues = new Set();
-        let detectedField = null;
-        siteBboxes.forEach(bbox => {
-          const res = getOverlapAttributes(c.id, bbox);
-          if (res) {
-            totalCount += res.count;
-            detectedField = res.field;
-            res.values.forEach(v => allValues.add(v));
-          }
-        });
-        if (allValues.size > 0 || totalCount > 0) {
-          combinedAttr = { field: detectedField, values: [...allValues], count: totalCount };
-        }
+      if (allSamplePts.length > 0) {
+        combinedAttr = getOverlapAttributes(c.id, allSamplePts);
       }
 
       // Build the meta object with _id for color lookup
@@ -2119,7 +2121,7 @@ function openReport() {
       const hasOverlap  = combinedAttr !== null;
 
       // Only show red/amber alerts if there's an actual detected overlap (or no bboxes on screen)
-      const showAlert = hasOverlap || siteBboxes.length === 0;
+      const showAlert = hasOverlap;
       if (!showAlert && (c.cls === 'val-err' || c.cls === 'val-warn')) return;
 
       valHtml += `<div class="val-item ${c.cls}">
@@ -2136,6 +2138,7 @@ function openReport() {
       valHtml = `<div class="val-item val-ok"><span style="font-size:15px">✅</span><div><strong>No critical conflicts detected</strong><br>No conflicts found from active layers. Activate more layers for comprehensive validation.</div></div>`;
     }
   }
+
 
   // Tileset config table
 
@@ -2451,6 +2454,7 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
+
 
 
 
