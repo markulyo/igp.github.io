@@ -959,26 +959,33 @@ function restoreUserLayers() {
   });
 
   // Re-add in-progress draw temp layer if active
+// Re-add in-progress draw temp layer if active
   if (drawActive && drawPts.length >= 2) updateTempDraw();
 }
+
+let _styleSwitch = false; // flag: style switch in progress
 
 function toggleBasemap() {
   if (!mapReady) return;
   basemapSat = !basemapSat;
+  _styleSwitch = true;
   // ▼▼▼  EDIT: Change the satellite style URL here if needed  ▼▼▼
   map.setStyle(basemapSat
     ? 'mapbox://styles/mapbox/satellite-streets-v12'
     : DEFAULT_STYLE);
   // ▲▲▲  ─────────────────────────────────────────────────────  ▲▲▲
   map.once('style.load', () => {
-    // Re-add all IGP reference layers
+    // Re-add all IGP reference layers — renderLayer will re-apply color coding automatically
     LAYER_IDS.forEach(id => { if (STATE[id].visible) addMapLayer(id); });
     // Re-add user-drawn polygons, KML uploads and markers
     restoreUserLayers();
+    _styleSwitch = false;
   });
   document.getElementById('satBtn').classList.toggle('active', basemapSat);
 }
+
 function flyPH() { map.flyTo({ center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM, duration: 1200 }); }
+
 
 /* ═══════════════════════════════════════════════════════════════
  *  LAYER TOGGLE — called by each checkbox
@@ -1149,7 +1156,11 @@ function renderLayer(id, srcId, cfg, s, srcLayer, bounds) {
     setStatus(id, 'configured', '✓ Loaded — "' + srcLayer + '"');
     toast(LAYER_META[id].name + ' loaded!', 'ok');
 
-    // Color coding fires via the global map.on('idle') handler — no extra call needed.
+    // If this layer already has a color state (e.g. after basemap switch), re-apply immediately
+    const _cs = LAYER_COLOR_STATE[id];
+    if (_cs && _cs.field && _cs.valueMap[_cs.field] && Object.keys(_cs.valueMap[_cs.field]).length > 0) {
+      applyColorCoding(id, _cs.field);
+    }
 
     // Fly to layer bounds if inside Philippines
     if (bounds && Array.isArray(bounds) && bounds.length === 4) {
@@ -1178,7 +1189,6 @@ function removeMapLayer(id, resetVisible = true) {
     delete LAYER_COLOR_STATE[id]; // clear so it re-detects on next load
   }
 }
-
 function clearAllLayers() {
   LAYER_IDS.forEach(id => {
     removeMapLayer(id);
@@ -1372,22 +1382,32 @@ function _sampleRendered(id) {
 
   if (!changed) return;
 
-  // Rebuild color maps
+  // Rebuild color maps — additive only: preserve existing value→color assignments
   cs.fields.forEach(f => {
-    if (cs.valueSets[f].size > 0) {
-      cs.valueMap[f] = buildColorMap(cs.valueSets[f]);
-    }
+    if (cs.valueSets[f].size === 0) return;
+    const existing = cs.valueMap[f] || {};
+    // Only assign colors to values not already in the map
+    const newVals = [...cs.valueSets[f]].filter(v => !(v in existing));
+    if (newVals.length === 0) return; // nothing new, keep existing colors
+    // Count how many colors already used to continue the palette index
+    const usedCount = Object.keys(existing).length;
+    newVals.sort().forEach((v, i) => {
+      existing[v] = ATTR_PALETTE[(usedCount + i) % ATTR_PALETTE.length];
+    });
+    cs.valueMap[f] = existing;
   });
 
   // Auto-pick best field (most distinct categorical values, 2–20)
-  let bestField = cs.field;
-  let bestScore = 0;
-  cs.fields.forEach(f => {
-    const n = cs.valueSets[f].size;
-    if (n >= 2 && n <= 20 && n > bestScore) { bestField = f; bestScore = n; }
-  });
-  // Only auto-switch field on very first sample batch
-  if (!cs._userPicked) cs.field = bestField;
+  // Skip re-picking during a style switch — keep the existing field selection
+  if (!_styleSwitch) {
+    let bestField = cs.field;
+    let bestScore = 0;
+    cs.fields.forEach(f => {
+      const n = cs.valueSets[f].size;
+      if (n >= 2 && n <= 20 && n > bestScore) { bestField = f; bestScore = n; }
+    });
+    if (!cs._userPicked) cs.field = bestField;
+  }
 
   applyColorCoding(id, cs.field);
 }
@@ -1481,6 +1501,7 @@ function toggleDim(secId, grpId) {
   document.getElementById(secId).classList.toggle('collapsed');
   document.getElementById(grpId).classList.toggle('closed');
 }
+
 
 /* ═══════════════════════════════════════════════════════════════
  *  DRAW MODE
@@ -2573,7 +2594,6 @@ LAYER_IDS.forEach(id => {
 </script>
 </body>
 </html>
-
 
 
 
