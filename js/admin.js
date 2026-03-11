@@ -4,6 +4,8 @@
  */
 
 let currentAdminTab = 'users';
+let pendingUserChanges = {};
+let pendingResourceChanges = {};
 
 /**
  * Check if current user is admin
@@ -20,6 +22,8 @@ function openAdminDashboard() {
         toast('Admin access required', 'warn');
         return;
     }
+    pendingUserChanges = {};
+    pendingResourceChanges = {};
     document.getElementById('adminModal').classList.add('show');
     loadAdminData();
 }
@@ -44,6 +48,68 @@ function switchAdminTab(tab) {
     
     if (tab === 'users') refreshUserList();
     if (tab === 'analytics') loadAnalytics();
+}
+
+/**
+ * Mark a user change as pending
+ */
+function markUserChange(userId, field, value) {
+    pendingUserChanges[userId] = pendingUserChanges[userId] || {};
+    pendingUserChanges[userId][field] = value;
+    updateSaveButton();
+}
+
+/**
+ * Update save button visibility
+ */
+function updateSaveButton() {
+    const saveBtn = document.getElementById('adminSaveBtn');
+    const userCount = Object.keys(pendingUserChanges).length;
+    const resourceCount = Object.keys(pendingResourceChanges).length;
+    const totalChanges = userCount + resourceCount;
+    
+    if (saveBtn) {
+        saveBtn.style.display = totalChanges > 0 ? 'flex' : 'none';
+        saveBtn.textContent = totalChanges > 0 ? `💾 Save Changes (${totalChanges})` : '💾 Save Changes';
+    }
+}
+
+/**
+ * Save all pending changes
+ */
+async function saveAllChanges() {
+    const saveBtn = document.getElementById('adminSaveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '⏳ Saving...';
+    
+    try {
+        // Save user changes
+        for (const userId of Object.keys(pendingUserChanges)) {
+            const changes = pendingUserChanges[userId];
+            await db.collection('users').doc(userId).update(changes);
+        }
+        
+        // Save resource changes (in-memory only for now)
+        for (const layerId of Object.keys(pendingResourceChanges)) {
+            const newTilesetId = pendingResourceChanges[layerId];
+            LAYER_CONFIG[layerId].tilesetId = newTilesetId;
+            STATE[layerId].tilesetId = newTilesetId;
+        }
+        
+        pendingUserChanges = {};
+        pendingResourceChanges = {};
+        updateSaveButton();
+        
+        toast('All changes saved successfully!', 'ok');
+        refreshUserList();
+        loadResourceList();
+        loadAnalytics();
+    } catch (err) {
+        console.error('Error saving changes:', err);
+        toast('Failed to save some changes', 'err');
+    }
+    
+    saveBtn.disabled = false;
 }
 
 /**
@@ -77,19 +143,23 @@ async function refreshUserList() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${users.map(u => `
+                    ${users.map(u => {
+                        const pendingRole = pendingUserChanges[u.id]?.role;
+                        const hasChange = pendingRole && pendingRole !== u.role;
+                        return `
                         <tr style="border-bottom:1px solid var(--border)">
                             <td style="padding:10px">
                                 <div style="font-weight:500">${u.displayName || 'Unknown'}</div>
                                 <div style="font-size:11px;color:var(--muted)">${u.email || 'No email'}</div>
                             </td>
                             <td style="padding:10px">
-                                <select onchange="updateUserRole('${u.id}', this.value)" 
-                                        style="background:var(--panel2);border:1px solid var(--border);padding:4px 8px;border-radius:4px;color:var(--text)">
-                                    <option value="viewer" ${u.role === 'viewer' ? 'selected' : ''}>Viewer</option>
-                                    <option value="analyst" ${u.role === 'analyst' ? 'selected' : ''}>Analyst</option>
-                                    <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+                                <select onchange="markUserChange('${u.id}', 'role', this.value)" 
+                                        style="background:var(--panel2);border:1px solid ${hasChange ? 'var(--accent3)' : 'var(--border)'};padding:4px 8px;border-radius:4px;color:var(--text)">
+                                    <option value="viewer" ${(pendingRole || u.role) === 'viewer' ? 'selected' : ''}>Viewer</option>
+                                    <option value="analyst" ${(pendingRole || u.role) === 'analyst' ? 'selected' : ''}>Analyst</option>
+                                    <option value="admin" ${(pendingRole || u.role) === 'admin' ? 'selected' : ''}>Admin</option>
                                 </select>
+                                ${hasChange ? '<span style="color:var(--accent3);font-size:10px;margin-left:4px">●</span>' : ''}
                             </td>
                             <td style="padding:10px;color:var(--muted)">${u.provider || 'email'}</td>
                             <td style="padding:10px;color:var(--muted)">${u.createdAt ? new Date(u.createdAt.seconds * 1000).toLocaleDateString() : 'Unknown'}</td>
@@ -100,28 +170,13 @@ async function refreshUserList() {
                                 </button>
                             </td>
                         </tr>
-                    `).join('')}
+                    `}).join('')}
                 </tbody>
             </table>
         `;
     } catch (err) {
         console.error('Error loading users:', err);
         userListEl.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444">Error loading users</div>';
-    }
-}
-
-/**
- * Update user role
- */
-async function updateUserRole(userId, newRole) {
-    try {
-        await db.collection('users').doc(userId).update({ role: newRole });
-        toast('User role updated to ' + newRole, 'ok');
-        loadAnalytics();
-    } catch (err) {
-        console.error('Error updating role:', err);
-        toast('Failed to update role', 'err');
-        refreshUserList();
     }
 }
 
@@ -165,45 +220,57 @@ function loadResourceList() {
                 </tr>
             </thead>
             <tbody>
-                ${resources.map(r => `
+                ${resources.map(r => {
+                    const pendingTileset = pendingResourceChanges[r.id];
+                    const hasChange = pendingTileset !== undefined && pendingTileset !== r.tilesetId;
+                    const displayTileset = hasChange ? pendingTileset : r.tilesetId;
+                    return `
                     <tr style="border-bottom:1px solid var(--border)">
                         <td style="padding:10px">
                             <div style="font-weight:500">${r.icon} ${r.name}</div>
                             <div style="font-size:11px;color:var(--muted)">${r.sub}</div>
                         </td>
-                        <td style="padding:10px;font-family:monospace;font-size:11px">${r.tilesetId || 'Not configured'}</td>
                         <td style="padding:10px">
-                            ${r.tilesetId 
+                            <input type="text" value="${displayTileset || ''}" 
+                                   onchange="markResourceChange('${r.id}', this.value)"
+                                   placeholder="Enter tileset ID"
+                                   style="width:100%;background:var(--panel2);border:1px solid ${hasChange ? 'var(--accent3)' : 'var(--border)'};padding:6px 8px;border-radius:4px;color:var(--text);font-family:monospace;font-size:11px">
+                            ${hasChange ? '<span style="color:var(--accent3);font-size:10px;margin-left:4px">●</span>' : ''}
+                        </td>
+                        <td style="padding:10px">
+                            ${displayTileset 
                                 ? '<span style="color:#22c55e">✓ Configured</span>' 
                                 : '<span style="color:var(--muted)">○ Not set</span>'}
                         </td>
                         <td style="padding:10px">
-                            <button onclick="editLayerConfig('${r.id}')" 
-                                    style="background:rgba(59,130,246,0.2);border:1px solid rgba(59,130,246,0.4);color:#3b82f6;padding:4px 8px;border-radius:4px;cursor:pointer">
-                                ✏ Edit
+                            <button onclick="resetResourceChange('${r.id}')" 
+                                    style="background:rgba(100,116,139,0.2);border:1px solid rgba(100,116,139,0.4);color:var(--muted);padding:4px 8px;border-radius:4px;cursor:pointer">
+                                ↺
                             </button>
                         </td>
                     </tr>
-                `).join('')}
+                `}).join('')}
             </tbody>
         </table>
     `;
 }
 
 /**
- * Edit layer config
+ * Mark a resource change as pending
  */
-function editLayerConfig(layerId) {
-    const config = LAYER_CONFIG[layerId];
-    const meta = LAYER_META[layerId];
-    const newTilesetId = prompt('Enter new Tileset ID for ' + meta.name + ':', config.tilesetId || '');
-    
-    if (newTilesetId !== null) {
-        LAYER_CONFIG[layerId].tilesetId = newTilesetId;
-        STATE[layerId].tilesetId = newTilesetId;
-        toast('Layer config updated. Refresh to apply.', 'ok');
-        loadResourceList();
-    }
+function markResourceChange(layerId, value) {
+    pendingResourceChanges[layerId] = value;
+    updateSaveButton();
+    loadResourceList();
+}
+
+/**
+ * Reset a resource change
+ */
+function resetResourceChange(layerId) {
+    delete pendingResourceChanges[layerId];
+    updateSaveButton();
+    loadResourceList();
 }
 
 /**
