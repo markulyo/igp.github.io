@@ -251,3 +251,12 @@
   .mapboxgl-popup-content { background: var(--panel2) !important; border: 1px solid var(--border) !important; color: var(--text) !important; border-radius: 8px !important; padding: 10px 13px !important; font-family: 'DM Sans', sans-serif !important; font-size: 12px !important; }
   .mapboxgl-popup-tip { display: none !important; }
   .mapboxgl-popup-close-button { color: var(--muted) !important; font-size: 16px !important; }
+
+  /* Admin Dashboard */
+  .admin-tab { flex:1; padding:12px; background:none; border:none; color:var(--muted); font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;transition:all 0.15s }
+  .admin-tab:hover { color:var(--text); }
+  .admin-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .admin-content { padding:0 }
+  .report-stat-card { background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:16px;text-align:center }
+  .report-stat-num { font-family:'Syne',sans-serif;font-size:28px;font-weight:800;line-height:1.2 }
+  .report-stat-lbl { font-size:11px;color:var(--muted);margin-top:4px }

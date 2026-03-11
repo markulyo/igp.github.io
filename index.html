@@ -61,6 +61,7 @@
     <span style="font-size:11px;font-weight:400;color:var(--muted);margin-left:6px;border-left:1px solid var(--border);padding-left:10px;">Integrated Geospatial Platform · NIA Philippines</span>
   </div>
 <div class="header-actions">
+    <button class="btn btn-ghost" id="adminBtn" onclick="openAdminDashboard()" style="display:none">⚙ Admin</button>
     <button class="btn btn-ghost" onclick="clearAllLayers()">⊗ Clear All</button>
     <button class="btn btn-ghost" id="drawBtn" onclick="if(!window._viewerRestricted)toggleDraw();else toast('Not available for Viewer role','warn')">✏ Draw Polygon</button>
     <button class="btn btn-ghost" id="exportKmlBtn" onclick="if(!window._viewerRestricted)downloadKML();else toast('Not available for Viewer role','warn')">⬇ Export KML</button>
@@ -342,6 +343,74 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════ ADMIN DASHBOARD MODAL ═══ -->
+<div class="modal-overlay" id="adminModal" onclick="if(event.target===this)this.classList.remove('show')">
+  <div class="modal" style="max-width:900px;max-height:90vh">
+    <div class="modal-header">
+      <div class="modal-title">⚙ Admin Dashboard</div>
+      <button class="modal-close" onclick="document.getElementById('adminModal').classList.remove('show')">✕</button>
+    </div>
+    <div class="modal-body" style="padding:0;overflow-y:auto">
+      <div style="display:flex;border-bottom:1px solid var(--border)">
+        <button class="admin-tab active" onclick="switchAdminTab('users')" id="tab-users">👥 Users</button>
+        <button class="admin-tab" onclick="switchAdminTab('resources')" id="tab-resources">🗺 Resources</button>
+        <button class="admin-tab" onclick="switchAdminTab('analytics')" id="tab-analytics">📊 Analytics</button>
+      </div>
+      
+      <!-- Users Tab -->
+      <div id="admin-users" class="admin-content">
+        <div style="padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <h3 style="margin:0;font-size:16px">User Management</h3>
+            <button class="btn btn-blue" onclick="refreshUserList()">🔄 Refresh</button>
+          </div>
+          <div id="userList" style="max-height:400px;overflow-y:auto">
+            <div style="text-align:center;padding:40px;color:var(--muted)">Loading users...</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Resources Tab -->
+      <div id="admin-resources" class="admin-content" style="display:none">
+        <div style="padding:16px">
+          <h3 style="margin:0 0 16px 0;font-size:16px">Layer Resources</h3>
+          <div id="resourceList" style="max-height:400px;overflow-y:auto">
+            <!-- Layer configs will be rendered here -->
+          </div>
+        </div>
+      </div>
+      
+      <!-- Analytics Tab -->
+      <div id="admin-analytics" class="admin-content" style="display:none">
+        <div style="padding:16px">
+          <h3 style="margin:0 0 16px 0;font-size:16px">System Analytics</h3>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px">
+            <div class="report-stat-card">
+              <div class="report-stat-num" id="stat-total-users" style="color:var(--accent)">-</div>
+              <div class="report-stat-lbl">Total Users</div>
+            </div>
+            <div class="report-stat-card">
+              <div class="report-stat-num" id="stat-active-users" style="color:var(--accent2)">-</div>
+              <div class="report-stat-lbl">Active Users</div>
+            </div>
+            <div class="report-stat-card">
+              <div class="report-stat-num" id="stat-total-layers" style="color:#8b5cf6">-</div>
+              <div class="report-stat-lbl">Configured Layers</div>
+            </div>
+          </div>
+          <div style="background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:16px">
+            <h4 style="margin:0 0 12px 0;font-size:14px">Recent Activity</h4>
+            <div id="recentActivity" style="font-size:12px;color:var(--muted)">No recent activity</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('adminModal').classList.remove('show')">Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 
 <script src="js/map.js"></script>
@@ -351,6 +420,7 @@
 <script src="js/kml.js"></script>
 <script src="js/report.js"></script>
 <script src="js/auth.js"></script>
+<script src="js/admin.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

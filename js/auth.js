@@ -112,6 +112,7 @@ function enterApp(user, role) {
 function applyRoleRestrictions(role) {
     const isViewer = role === 'viewer';
     window._viewerRestricted = isViewer;
+    window.currentUserRole = role;
 
     const restrictedBtns = ['drawBtn', 'drawTbtn', 'exportKmlBtn', 'uploadKmlBtn', 'reportBtn'];
     const hiddenSections = ['coordSearchSection', 'kmlUploadFooter'];
@@ -132,6 +133,12 @@ function applyRoleRestrictions(role) {
         if (isViewer) el.classList.add('viewer-hidden');
         else el.classList.remove('viewer-hidden');
     });
+
+    // Show admin button for admin users
+    const adminBtn = document.getElementById('adminBtn');
+    if (adminBtn) {
+        adminBtn.style.display = role === 'admin' ? 'flex' : 'none';
+    }
 }
 
 /**
