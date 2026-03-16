@@ -103,24 +103,22 @@ function sutherlandHodgman(subjectRing, clipRing) {
 // We try both orientations and also check containment fallback.
 function ringIntersectionArea(rA, rB) {
   if (!rA || !rB || rA.length < 3 || rB.length < 3) return 0;
-
-  // Check containment FIRST — Sutherland-Hodgman fails silently on
-  // winding-order mismatches which is common with large tile polygons.
-  // rA (site ring) fully inside rB (layer ring)
-  if (ptInRing(rA[0][0], rA[0][1], rB)) return ringArea(rA);
-  // rB (layer ring) fully inside rA (site ring)
-  if (ptInRing(rB[0][0], rB[0][1], rA)) return ringArea(rB);
-
-  // Standard clip: try both orientations
-  const c1 = sutherlandHodgman(rA, rB);
-  const a1 = c1.length >= 3 ? ringArea(c1) : 0;
-  if (a1 > 0) return a1;
-
-  const c2 = sutherlandHodgman(rB, rA);
-  const a2 = c2.length >= 3 ? ringArea(c2) : 0;
-  return a2;
+  const sA = [0, Math.floor(rA.length/3), Math.floor(rA.length*2/3)];
+  const sB = [0, Math.floor(rB.length/3), Math.floor(rB.length*2/3)];
+  if (sA.every(i => ptInRing(rA[i][0], rA[i][1], rB))) return ringArea(rA);
+  if (sB.every(i => ptInRing(rB[i][0], rB[i][1], rA))) return ringArea(rB);
+  const c1 = sutherlandHodgman(rA, rB);    const a1 = c1.length >= 3 ? ringArea(c1) : 0; if (a1 > 0) return a1;
+  const c2 = sutherlandHodgman(rB, rA);    const a2 = c2.length >= 3 ? ringArea(c2) : 0; if (a2 > 0) return a2;
+  const rArev = [...rA].reverse(), rBrev = [...rB].reverse();
+  const c3 = sutherlandHodgman(rArev, rB);  const a3 = c3.length >= 3 ? ringArea(c3) : 0; if (a3 > 0) return a3;
+  const c4 = sutherlandHodgman(rA, rBrev);  const a4 = c4.length >= 3 ? ringArea(c4) : 0; if (a4 > 0) return a4;
+  const c5 = sutherlandHodgman(rArev, rBrev); const a5 = c5.length >= 3 ? ringArea(c5) : 0; if (a5 > 0) return a5;
+  const aInB = rA.filter(([x,y]) => ptInRing(x, y, rB)).length;
+  if (aInB > 0) return ringArea(rA) * (aInB / rA.length);
+  const bInA = rB.filter(([x,y]) => ptInRing(x, y, rA)).length;
+  if (bInA > 0) return ringArea(rB) * (bInA / rB.length);
+  return 0;
 }
-
 /* ── Total intersection area: site geometry vs layer geometry ───────────── */
 function intersectionArea(siteGeom, layerGeom) {
   const siteRings = [];
@@ -356,10 +354,6 @@ function getOverlapAttributes(layerId, siteFeatures) {
 
   // ── Build fieldValuePcts and valuePcts ────────────────────────────────────
   // DEBUG
-  console.log('[OVERLAP] layerId keyCovered:', JSON.stringify(
-    Object.fromEntries([...valueRings.entries()].map(([k,e]) => [e.value, +(keyCovered[k]||0).toFixed(6)]))
-  ));
-  console.log('[OVERLAP] siteTotalArea:', siteTotalArea.toFixed(6));
 
   const fieldValuePcts = {};
   for (const [key, entry] of valueRings) {
@@ -367,7 +361,6 @@ function getOverlapAttributes(layerId, siteFeatures) {
     const pct = siteTotalArea > 0 ? Math.min(100, (keyCovered[key] / siteTotalArea) * 100) : 0;
     fieldValuePcts[entry.field][entry.value] = (fieldValuePcts[entry.field][entry.value] || 0) + pct;
   }
-  console.log('[OVERLAP] fieldValuePcts:', JSON.stringify(fieldValuePcts));
 
   // valuePcts: use colorField for scoring accuracy
   const scoringField = colorField && fieldValuePcts[colorField] ? colorField
@@ -381,16 +374,26 @@ function getOverlapAttributes(layerId, siteFeatures) {
   const allValues = [...new Set([...valueRings.values()].map(e => e.value))];
   const allFields = [...new Set([...valueRings.values()].map(e => e.field))];
 
+  // Build fieldValueM2: actual intersection area in m² per field→value
+  // (keyCovered is indexed by "field__SEP__value")
+  const fieldValueM2 = {};
+  for (const [key, entry] of valueRings) {
+    if (!fieldValueM2[entry.field]) fieldValueM2[entry.field] = {};
+    const existing = fieldValueM2[entry.field][entry.value] || 0;
+    fieldValueM2[entry.field][entry.value] = existing + (keyCovered[key] || 0);
+  }
+
   return { field: scoringField, fields: allFields, values: allValues,
-           valuePcts, fieldValuePcts, count: matchCount,
+           valuePcts, fieldValuePcts, fieldValueM2, count: matchCount,
            overlapPct, coveredArea, siteTotalArea };
 }
 
 /* ── Attribute detail: full table of ALL fields & values with overlap % ───── */
 function buildAttrDetail(attrResult, layerMeta) {
   if (!attrResult) return '';
-  const { fields, fieldValuePcts, count, coveredArea, siteTotalArea } = attrResult;
-  const fvp = fieldValuePcts || {};
+  const { fields, fieldValuePcts, fieldValueM2, count, coveredArea, siteTotalArea } = attrResult;
+  const fvp  = fieldValuePcts || {};
+  const fvm2 = fieldValueM2   || {};
   const coveredHa = coveredArea ? (coveredArea / 10000).toFixed(2) : null;
   const siteHa    = siteTotalArea ? (siteTotalArea / 10000).toFixed(2) : null;
   const areaLine  = (coveredHa && siteHa)
@@ -410,8 +413,11 @@ function buildAttrDetail(attrResult, layerMeta) {
       const pct  = pair[1];
       const col  = colorMap[val] || '#64748b';
       const barW = Math.min(100, pct).toFixed(1);
-      const areaM2 = siteTotalArea ? (pct / 100) * siteTotalArea : 0;
-      const aHa  = (areaM2 / 10000).toFixed(2);
+      // Use actual intersection area from fieldValueM2; fall back to back-calculation only if missing
+      const actualM2 = (fvm2[field] && fvm2[field][val] != null)
+        ? fvm2[field][val]
+        : (siteTotalArea ? (pct / 100) * siteTotalArea : 0);
+      const aHa  = (actualM2 / 10000).toFixed(2);
       return '<tr>'
         + '<td style="padding:3px 6px;border:1px solid var(--border);vertical-align:middle">'
         + '<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:' + col + ';border:1px solid rgba(0,0,0,0.25);vertical-align:middle"></span></td>'
@@ -867,8 +873,9 @@ function buildScorecardSection(active, siteFeatures, overlapCache) {
       scoredCount++;
       const sm = scoreMeta(score);
 
-      const pct            = attrResult ? (attrResult.overlapPct    || 0)  : 0;
+      const pct             = attrResult ? (attrResult.overlapPct    || 0)  : 0;
       const fieldValuePcts  = attrResult ? (attrResult.fieldValuePcts || {}) : {};
+      const fieldValueM2Sc  = attrResult ? (attrResult.fieldValueM2   || {}) : {};
       const siteTotalAreaSc = attrResult ? (attrResult.siteTotalArea  || 0)  : 0;
       const cs_sc           = LAYER_COLOR_STATE[item.id] || {};
 
@@ -886,7 +893,11 @@ function buildScorecardSection(active, siteFeatures, overlapCache) {
           const vs    = scoreForValue(item.id, val);
           const vc    = vs === 100 ? '#22c55e' : vs === 50 ? '#f59e0b' : vs === 10 ? '#ef4444' : col;
           const barW  = Math.min(100, vpct).toFixed(1);
-          const areaM2 = siteTotalAreaSc ? (vpct / 100) * siteTotalAreaSc : 0;
+          // Use actual intersection area from fieldValueM2Sc; fall back to back-calculation only if missing
+          const actualM2Sc = (fieldValueM2Sc[field] && fieldValueM2Sc[field][val] != null)
+            ? fieldValueM2Sc[field][val]
+            : (siteTotalAreaSc ? (vpct / 100) * siteTotalAreaSc : 0);
+          const areaM2 = actualM2Sc;
           const aHa   = (areaM2 / 10000).toFixed(2);
           return '<tr>'
             + '<td style="padding:2px 5px;border:1px solid var(--border);vertical-align:middle">'
@@ -971,9 +982,10 @@ function buildScorecardSection(active, siteFeatures, overlapCache) {
     </div>`;
   }).join('');
 
-  // Final summary — if ANY exclusionary criterion triggered, override to RESTRICTED
+  // Final summary
+  // IGP rule: ANY Section A trigger → final result is always Not Suitable
   const fm = anyRestricted
-    ? { label: 'Low Suitable — RESTRICTED', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', border: '#ef4444' }
+    ? { label: 'Not Suitable — RESTRICTED', color: '#ef4444', bg: 'rgba(239,68,68,0.15)', border: '#ef4444' }
     : finalScoreMeta(grandTotal);
   const summaryRows = ['A','B','C'].map(dim => {
     const d = dimResults[dim];
@@ -1032,15 +1044,19 @@ function buildScorecardSection(active, siteFeatures, overlapCache) {
         <tbody>${summaryRows}</tbody>
       </table>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:${fm.bg};border:2px solid ${fm.border};border-radius:8px">
-        <div>
-          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:${fm.color}">FINAL IGP PROJECT SCORE</div>
-          ${anyRestricted ? '<div style="font-size:10px;color:#ef4444;margin-top:3px">⛔ Exclusionary criteria triggered — result overridden to Low Suitable</div>' : ''}
-        </div>
+        <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:800;color:${fm.color}">FINAL IGP PROJECT SCORE</div>
         <div style="display:flex;align-items:center;gap:12px">
-          <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:${fm.color}">${grandTotal.toFixed(2)}</div>
+          ${anyRestricted
+            ? `<span style="font-size:13px;color:rgba(239,68,68,0.45);text-decoration:line-through;font-weight:700">${grandTotal.toFixed(2)}</span>`
+            : `<div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:${fm.color}">${grandTotal.toFixed(2)}</div>`}
           <div style="font-size:11px;font-weight:700;color:${fm.color};background:${fm.bg};border:1px solid ${fm.border};border-radius:6px;padding:4px 10px">${fm.label}</div>
         </div>
       </div>
+      ${anyRestricted
+        ? `<div style="margin-top:6px;padding:6px 10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;font-size:10px;color:#ef4444;font-weight:600">
+            ⛔ Section A exclusionary criteria triggered — final result is <strong>Not Suitable</strong> regardless of Section B score.
+           </div>`
+        : ""}
       <div style="font-size:10px;color:var(--muted);margin-top:6px;text-align:right">
         Scale: &lt;40 = Not Suitable &nbsp;·&nbsp; 40–70 = Moderately Suitable &nbsp;·&nbsp; &gt;70 = Highly Suitable
       </div>
@@ -1189,7 +1205,6 @@ function _buildReportBody(active, dimA, dimB, dimC, siteFeatures, now, hasData, 
       ${dimC.length ? `<div style="margin-bottom:8px"><div style="font-size:10px;color:var(--dim-c);font-weight:700;letter-spacing:0.5px;margin-bottom:4px">DIM C — GOVERNANCE</div>${dimC.map(id=>`<span class="report-tag rpt-c">● ${LAYER_META[id].name}</span>`).join('')}</div>`:''}
     </div>
 
-   
 
     <div class="rpt-section">
       <div class="rpt-section-title">📂 Site Data</div>
@@ -1236,3 +1251,4 @@ document.addEventListener('keydown', e => {
     document.getElementById('reportModal').classList.remove('show');
   }
 });
+
