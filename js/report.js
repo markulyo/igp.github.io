@@ -781,7 +781,7 @@ const ATTR_SCORE_MAP = {
   npaaad: [
     { score:100, keys:['alluvial', 'agro-industrial', 'agroindustrial', 'agro industrial'] },
     { score: 50, keys:['highland', '500m', 'semi-temperate', 'semitemperate'] },
-    { score: 10, keys:['served', 'fragile', 'incompatible', 'forest', 'watershed', 'built-up', 'quarry', 'water body', 'fishery'] },
+    { score: 10, keys:['irrigated','served', 'fragile', 'incompatible', 'forest', 'watershed', 'built-up', 'quarry', 'water body', 'fishery'] },
   ],
   safdz: [
     { score:100, keys:['strategic crop', 'crop subdevelopment', 'crop zone', 'crop development'] },
