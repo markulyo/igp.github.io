@@ -729,8 +729,8 @@ const ATTR_SCORE_MAP = {
     { score: 10, keys:['difficult', 'saltwater', 'salt water', 'intrusion'] },
   ],
   climate: [
-    { score:100, keys:['type i', 'type 1', 'type-i', 'type-1'] },
-    { score: 50, keys:['type ii', 'type iii', 'type iv', 'type 2', 'type 3', 'type 4', 'type-ii', 'type-iii', 'type-iv'] },
+    { score:100, keys:['type i', 'type 1', 'type-i', 'type-1', '1'] },
+    { score: 50, keys:['type ii', 'type iii', 'type iv', 'type 2', 'type 3', '3', 'type 4', 'type-ii', 'type-iii', 'type-iv'] },
     { score: 10, keys:['type iv', 'type 4', 'type-iv'] }, // Type IV alone = 10
   ],
   landcover: [
