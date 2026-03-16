@@ -729,8 +729,8 @@ const ATTR_SCORE_MAP = {
     { score: 10, keys:['difficult', 'saltwater', 'salt water', 'intrusion'] },
   ],
   climate: [
-    { score:100, keys:['type i', 'type 1', 'type-i', 'type-1', '1'] },
-    { score: 50, keys:['type ii', 'type iii', 'type iv', 'type 2', 'type 3', '3', 'type 4', 'type-ii', 'type-iii', 'type-iv'] },
+    { score:100, keys:['type i', 'type 1', 'type-i', 'type-1', '1' ] },
+    { score: 50, keys:['type ii', 'type iii', 'type iv', 'type 2', 'type 3', '3', 'type 4', 'type-II', 'type-III', 'type-IV'] },
     { score: 10, keys:['type iv', 'type 4', 'type-iv'] }, // Type IV alone = 10
   ],
   landcover: [
@@ -799,7 +799,7 @@ function scoreForValue(layerId, valStr) {
   if (layerId === 'climate') {
     if (/type[\s\-]?iv|type[\s\-]?4/i.test(v)) return 10;
     if (/type[\s\-]?i(?!i|v)|type[\s\-]?1/i.test(v)) return 100;
-    if (/type[\s\-]?ii|type[\s\-]?iii|type[\s\-]?2|type[\s\-]?3/i.test(v)) return 50;
+    if (/type[\s\-]?ii|type[\s\-]?iii|type[\s\-]?2|type[\s\-]?3|3|2/i.test(v)) return 50;
     return null;
   }
   for (const rule of rules) {
