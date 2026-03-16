@@ -99,25 +99,52 @@ function sutherlandHodgman(subjectRing, clipRing) {
 }
 
 /* ── Intersection area of two simple rings ──────────────────────────────── */
-// Sutherland-Hodgman requires consistent winding order.
-// We try both orientations and also check containment fallback.
+// Sutherland-Hodgman requires consistent (CCW) winding order.
+// We normalize both rings to CCW before clipping.
+function ringSignedArea(ring) {
+  let s = 0;
+  for (let i = 0, n = ring.length; i < n; i++) {
+    const [x1, y1] = ring[i];
+    const [x2, y2] = ring[(i + 1) % n];
+    s += (x2 - x1) * (y2 + y1);
+  }
+  return s; // positive = CW in screen coords, negative = CCW
+}
+function ensureCCW(ring) {
+  // CCW in geographic coords = negative signed area (latitude increases upward)
+  return ringSignedArea(ring) > 0 ? [...ring].reverse() : ring;
+}
 function ringIntersectionArea(rA, rB) {
   if (!rA || !rB || rA.length < 3 || rB.length < 3) return 0;
-  const sA = [0, Math.floor(rA.length/3), Math.floor(rA.length*2/3)];
-  const sB = [0, Math.floor(rB.length/3), Math.floor(rB.length*2/3)];
+  // Quick bbox reject
+  const axs = rA.map(p => p[0]), ays = rA.map(p => p[1]);
+  const bxs = rB.map(p => p[0]), bys = rB.map(p => p[1]);
+  if (Math.min(...axs) > Math.max(...bxs) || Math.max(...axs) < Math.min(...bxs)) return 0;
+  if (Math.min(...ays) > Math.max(...bys) || Math.max(...ays) < Math.min(...bys)) return 0;
+
+  // Containment checks (exact)
+  const sA = [0, Math.floor(rA.length / 3), Math.floor(rA.length * 2 / 3)];
+  const sB = [0, Math.floor(rB.length / 3), Math.floor(rB.length * 2 / 3)];
   if (sA.every(i => ptInRing(rA[i][0], rA[i][1], rB))) return ringArea(rA);
   if (sB.every(i => ptInRing(rB[i][0], rB[i][1], rA))) return ringArea(rB);
-  const c1 = sutherlandHodgman(rA, rB);    const a1 = c1.length >= 3 ? ringArea(c1) : 0; if (a1 > 0) return a1;
-  const c2 = sutherlandHodgman(rB, rA);    const a2 = c2.length >= 3 ? ringArea(c2) : 0; if (a2 > 0) return a2;
-  const rArev = [...rA].reverse(), rBrev = [...rB].reverse();
-  const c3 = sutherlandHodgman(rArev, rB);  const a3 = c3.length >= 3 ? ringArea(c3) : 0; if (a3 > 0) return a3;
-  const c4 = sutherlandHodgman(rA, rBrev);  const a4 = c4.length >= 3 ? ringArea(c4) : 0; if (a4 > 0) return a4;
-  const c5 = sutherlandHodgman(rArev, rBrev); const a5 = c5.length >= 3 ? ringArea(c5) : 0; if (a5 > 0) return a5;
-  const aInB = rA.filter(([x,y]) => ptInRing(x, y, rB)).length;
-  if (aInB > 0) return ringArea(rA) * (aInB / rA.length);
-  const bInA = rB.filter(([x,y]) => ptInRing(x, y, rA)).length;
-  if (bInA > 0) return ringArea(rB) * (bInA / rB.length);
+
+  // Normalize winding to CCW then clip
+  const nA = ensureCCW(rA), nB = ensureCCW(rB);
+  const clipped = sutherlandHodgman(nA, nB);
+  if (clipped.length >= 3) {
+    const a = ringArea(clipped);
+    if (a > 0) return a;
+  }
+  // Try reverse subject (handles some degenerate cases)
+  const clipped2 = sutherlandHodgman(nB, nA);
+  if (clipped2.length >= 3) {
+    const a2 = ringArea(clipped2);
+    if (a2 > 0) return a2;
+  }
   return 0;
+  // NOTE: We intentionally do NOT fall back to vertex-count heuristics —
+  // those produce equal phantom areas across different features and were
+  // the root cause of the "all values show same percentage" bug.
 }
 /* ── Total intersection area: site geometry vs layer geometry ───────────── */
 function intersectionArea(siteGeom, layerGeom) {
@@ -254,8 +281,9 @@ function getOverlapAttributes(layerId, siteFeatures) {
 
   let matchCount = 0;
   const hitLayerRings = [];
-  // valueRings: "field__SEP__value" → { field, value, rings[] }
-  const valueRings = new Map();
+
+  // ── Build per-feature list with attribute keys ────────────────────────────
+  const featureList = []; // { keys, rings[] }
 
   for (const lf of deduped) {
     const lGeom = lf.geometry;
@@ -268,8 +296,6 @@ function getOverlapAttributes(layerId, siteFeatures) {
     fRings.forEach(r => hitLayerRings.push(r));
 
     const props = lf.properties || {};
-
-    // Collect fields: colorField first, then all other non-system fields
     const fields = [];
     if (colorField && props[colorField] != null) fields.push(colorField);
     for (const [k, v] of Object.entries(props)) {
@@ -278,16 +304,15 @@ function getOverlapAttributes(layerId, siteFeatures) {
       if (/^\d{7,}$/.test(String(v).trim())) continue;
       fields.push(k);
     }
-
+    const featureKeys = [];
     for (const field of fields) {
       const raw = props[field];
       if (raw == null) continue;
       const val = String(raw).trim();
       if (!val) continue;
-      const key = field + '__SEP__' + val;
-      if (!valueRings.has(key)) valueRings.set(key, { field, value: val, rings: [] });
-      fRings.forEach(r => valueRings.get(key).rings.push(r));
+      featureKeys.push(field + '__SEP__' + val);
     }
+    if (featureKeys.length) featureList.push({ keys: featureKeys, rings: fRings });
   }
 
   if (!matchCount) return null;
@@ -302,86 +327,114 @@ function getOverlapAttributes(layerId, siteFeatures) {
   let siteTotalArea = 0;
   for (const r of siteRings) siteTotalArea += ringArea(r);
 
-  // ── Per-key area (uncapped), then proportional scale within each field ────
-  const keyCovered = {};
-  for (const key of valueRings.keys()) keyCovered[key] = 0;
-  let coveredArea = 0;
+  // ── Grid-sampling intersection ────────────────────────────────────────────
+  // Sample the site bounding box on a grid. For each sample inside the site,
+  // find which layer value(s) it falls in. Count samples per value.
+  // This completely sidesteps tile-fragment overlap / winding-order issues.
 
-  // If no attribute fields were found, fall back to raw intersection area using hitLayerRings
-  const hasAttributes = valueRings.size > 0;
-
+  // Compute site bbox
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (const sRing of siteRings) {
-    const sRingArea = ringArea(sRing);
-
-    if (!hasAttributes) {
-      // No attributes — compute intersection area directly using hitLayerRings
-      let hitArea = 0;
-      for (const lRing of hitLayerRings) {
-        hitArea += ringIntersectionArea(sRing, lRing);
-        if (hitArea >= sRingArea) { hitArea = sRingArea; break; }
-      }
-      coveredArea += hitArea;
-      continue;
+    for (const [x, y] of sRing) {
+      if (x < minX) minX = x; if (x > maxX) maxX = x;
+      if (y < minY) minY = y; if (y > maxY) maxY = y;
     }
-
-    const rawByKey  = {};
-    for (const [key, entry] of valueRings) {
-      let clipped = 0;
-      for (const lRing of entry.rings) {
-        clipped += ringIntersectionArea(sRing, lRing);
-        if (clipped >= sRingArea) { clipped = sRingArea; break; }
-      }
-      rawByKey[key] = clipped;
-    }
-
-    // Scale within each field so values in same field sum to ≤ sRingArea
-    const byField = {};
-    for (const [key, entry] of valueRings) {
-      if (!byField[entry.field]) byField[entry.field] = [];
-      byField[entry.field].push(key);
-    }
-    let maxFieldCovered = 0;
-    for (const keys of Object.values(byField)) {
-      const raw = keys.reduce((s, k) => s + (rawByKey[k] || 0), 0);
-      if (raw <= 0) continue;
-      const actual = Math.min(raw, sRingArea);
-      const scale  = actual / raw;
-      for (const k of keys) keyCovered[k] += (rawByKey[k] || 0) * scale;
-      maxFieldCovered = Math.max(maxFieldCovered, actual);
-    }
-    coveredArea += maxFieldCovered;
   }
 
-  // ── Build fieldValuePcts and valuePcts ────────────────────────────────────
-  // DEBUG
+  // Choose grid resolution: ~50×50 = 2500 samples for speed, enough for ~2% precision
+  const GRID = 60;
+  const dx = (maxX - minX) / GRID;
+  const dy = (maxY - minY) / GRID;
+
+  // Collect all unique keys
+  const allKeySet = new Set();
+  for (const feat of featureList) feat.keys.forEach(k => allKeySet.add(k));
+
+  const keySamples   = {}; // key → count of samples inside that key's rings
+  for (const k of allKeySet) keySamples[k] = 0;
+  let siteSamples    = 0; // total samples inside site polygon
+
+  for (let i = 0; i <= GRID; i++) {
+    const px = minX + (i + 0.5) * dx;
+    for (let j = 0; j <= GRID; j++) {
+      const py = minY + (j + 0.5) * dy;
+
+      // Is this sample inside the site polygon?
+      const inSite = siteRings.some(r => ptInRing(px, py, r));
+      if (!inSite) continue;
+      siteSamples++;
+
+      // Which layer features contain this point?
+      // Use the FIRST matching feature per field (priority: colorField first via featureList order)
+      // to avoid double-counting a point that falls on a tile-seam overlap.
+      const fieldHit = {}; // field → key already counted for this sample
+      for (const feat of featureList) {
+        const inFeat = feat.rings.some(r => ptInRing(px, py, r));
+        if (!inFeat) continue;
+        for (const k of feat.keys) {
+          const field = k.split('__SEP__')[0];
+          if (!fieldHit[field]) {
+            fieldHit[field] = k;
+            keySamples[k]++;
+          }
+          // If a different feature with same field already hit, skip (prevents double-count)
+        }
+      }
+    }
+  }
+
+  // ── Convert sample counts to areas ───────────────────────────────────────
+  // siteSamples maps to siteTotalArea; scale each key proportionally.
+  const keyCovered = {};
+  for (const k of allKeySet) {
+    keyCovered[k] = siteSamples > 0
+      ? (keySamples[k] / siteSamples) * siteTotalArea
+      : 0;
+  }
+
+  // coveredArea: samples covered by ANY layer feature
+  let coveredSamples = 0;
+  // Re-scan: count samples inside site that are covered by at least one feature
+  // We can derive this from keySamples grouped by field (use best field)
+  const fieldSamples = {};
+  for (const k of allKeySet) {
+    const field = k.split('__SEP__')[0];
+    fieldSamples[field] = (fieldSamples[field] || 0) + keySamples[k];
+  }
+  const bestFieldSamples = Math.max(0, ...Object.values(fieldSamples));
+  const coveredArea = siteSamples > 0
+    ? (Math.min(bestFieldSamples, siteSamples) / siteSamples) * siteTotalArea
+    : 0;
+
+  // ── Build fieldValuePcts, fieldValueM2, allFields, allValues from keyCovered ──
+  const keyMeta = {};
+  for (const k of allKeySet) {
+    const sep = k.indexOf('__SEP__');
+    keyMeta[k] = { field: k.slice(0, sep), value: k.slice(sep + 7) };
+  }
 
   const fieldValuePcts = {};
-  for (const [key, entry] of valueRings) {
-    if (!fieldValuePcts[entry.field]) fieldValuePcts[entry.field] = {};
-    const pct = siteTotalArea > 0 ? Math.min(100, (keyCovered[key] / siteTotalArea) * 100) : 0;
-    fieldValuePcts[entry.field][entry.value] = (fieldValuePcts[entry.field][entry.value] || 0) + pct;
+  const fieldValueM2   = {};
+  for (const [key, meta] of Object.entries(keyMeta)) {
+    const { field, value } = meta;
+    const m2  = keyCovered[key] || 0;
+    const pct = siteTotalArea > 0 ? Math.min(100, (m2 / siteTotalArea) * 100) : 0;
+    if (!fieldValuePcts[field]) fieldValuePcts[field] = {};
+    if (!fieldValueM2[field])   fieldValueM2[field]   = {};
+    fieldValuePcts[field][value] = (fieldValuePcts[field][value] || 0) + pct;
+    fieldValueM2[field][value]   = (fieldValueM2[field][value]   || 0) + m2;
   }
 
-  // valuePcts: use colorField for scoring accuracy
+  const allFields = Object.keys(fieldValuePcts);
+  const allValues = [...new Set(Object.values(keyMeta).map(m => m.value))];
+
   const scoringField = colorField && fieldValuePcts[colorField] ? colorField
-    : Object.keys(fieldValuePcts)[0];
+    : allFields[0];
   const valuePcts = scoringField ? { ...fieldValuePcts[scoringField] } : {};
 
   const overlapPct = siteTotalArea > 0
     ? Math.min(100, (coveredArea / siteTotalArea) * 100)
     : (matchCount > 0 ? 100 : 0);
-
-  const allValues = [...new Set([...valueRings.values()].map(e => e.value))];
-  const allFields = [...new Set([...valueRings.values()].map(e => e.field))];
-
-  // Build fieldValueM2: actual intersection area in m² per field→value
-  // (keyCovered is indexed by "field__SEP__value")
-  const fieldValueM2 = {};
-  for (const [key, entry] of valueRings) {
-    if (!fieldValueM2[entry.field]) fieldValueM2[entry.field] = {};
-    const existing = fieldValueM2[entry.field][entry.value] || 0;
-    fieldValueM2[entry.field][entry.value] = existing + (keyCovered[key] || 0);
-  }
 
   return { field: scoringField, fields: allFields, values: allValues,
            valuePcts, fieldValuePcts, fieldValueM2, count: matchCount,
@@ -1251,4 +1304,3 @@ document.addEventListener('keydown', e => {
     document.getElementById('reportModal').classList.remove('show');
   }
 });
-
