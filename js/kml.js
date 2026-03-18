@@ -181,34 +181,22 @@ function updateKMLPanel() {
 /* ═══════════════════════════════════════════════════════════════
  *  DOWNLOAD KML
  * ═══════════════════════════════════════════════════════════════ */
-
-/**
- * Download KML of drawn polygons and KML features
- */
 function downloadKML() {
-    const polys = [
-        ...drawPolys,
-        ...uploadedKMLs.flatMap(k => k.features.filter(f => f.geometry.type === 'Polygon'))
-    ];
-    if (!polys.length) { toast('No polygons to export', 'warn'); return; }
-    const pms = polys.map(p => {
-        const coords = p.geometry.coordinates[0].map(c => c[0] + ',' + c[1] + ',0').join(' ');
-        return `  <Placemark><name>${p.properties?.name || 'Feature'}</name}
-    <Polygon><outerBoundaryIs><LinearRing><coordinates>${coords}</coordinates></LinearRing></outerBoundaryIs></Polygon>
-  </Placemark>`;
-    });
-    const kml = `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-<Document>
-  <name>IGP Export — ${new Date().toLocaleDateString()}</name>
-${pms.join('\n')}
-</Document>
-</kml>`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' }));
-    a.download = 'IGP_NIA_' + Date.now() + '.kml';
-    a.click();
-    toast('KML exported (' + polys.length + ' polygon' + (polys.length !== 1 ? 's' : '') + ')', 'ok');
+  const polys = [
+    ...drawPolys,
+    ...uploadedKMLs.flatMap(k => k.features.filter(f => f.geometry.type === 'Polygon'))
+  ];
+  if (!polys.length) { toast('No polygons to export', 'warn'); return; }
+  const pms = polys.map(p => {
+    const coords = p.geometry.coordinates[0].map(c => c[0]+','+c[1]+',0').join(' ');
+    return `  <Placemark><name>${p.properties?.name||'Feature'}</name>\n    <Polygon><outerBoundaryIs><LinearRing><coordinates>${coords}</coordinates></LinearRing></outerBoundaryIs></Polygon>\n  </Placemark>`;
+  });
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2">\n<Document>\n  <name>IGP Export — ${new Date().toLocaleDateString()}</name>\n${pms.join('\n')}\n</Document>\n</kml>`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([kml], { type:'application/vnd.google-earth.kml+xml' }));
+  a.download = 'IGP_NIA_' + Date.now() + '.kml';
+  a.click();
+  toast('KML exported (' + polys.length + ' polygon' + (polys.length !== 1 ? 's' : '') + ')', 'ok');
 }
 
 /* ═══════════════════════════════════════════════════════════════
