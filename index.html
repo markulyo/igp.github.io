@@ -68,6 +68,7 @@
     <button class="btn btn-blue" id="uploadKmlBtn" onclick="if(!window._viewerRestricted)document.getElementById('kmlInput').click();else toast('Not available for Viewer role','warn')">📂 Upload KML</button>
     <input type="file" id="kmlInput" accept=".kml" multiple style="display:none" onchange="handleKMLUpload(event)">
     <button class="btn btn-amber" id="reportBtn" onclick="if(!window._viewerRestricted)openReport();else toast('Not available for Viewer role','warn')">📋 Map Report</button>
+    <a href="https://tinyurl.com/igpusermanual" target="_blank" rel="noopener noreferrer" class="btn btn-ghost" style="text-decoration:none;">📖 User Manual</a>
   </div>
   <div id="userBadge">
     <div class="user-avatar" id="userAvatar">?</div>
